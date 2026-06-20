@@ -1,0 +1,12 @@
+[user]
+	name = mindnbytes
+	email = mindnbytes@gmail.com
+	username = mindnbytes
+[init]
+	defauldBranch = master
+[core]
+	editor = hx
+[color]
+	ui = auto
+[push]
+	autoSetupRemote = true
