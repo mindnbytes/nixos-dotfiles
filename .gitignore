@@ -1,0 +1,13 @@
+# secrets
+.env
+*.key
+*.pem
+*.agekey
+secrets/
+private/
+
+# editor/cache noise
+.cache/
+result
+result-*
+
