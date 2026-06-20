@@ -13,6 +13,12 @@
 
   networking.networkmanager.enable = true;
 
+  nixpkgs.config.allowUnfreePredicate = pkg:
+    builtins.elem (lib.getName pkg) [
+      "b43-firmware"
+    ];
+  networking.enableB43Firmware = true;
+
   time.timeZone = "Europe/Berlin";
 
   services.gnome.gcr-ssh-agent.enable = false;
@@ -35,11 +41,27 @@
     packages = with pkgs; [
       tree
     ];
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAEBc+D/LqeB3835KXSM5J/dSU1nPwiszC5pPcGpykoi macbook-to-nixos-mini"
+    ];
   };
 
   programs.firefox.enable = true;
   programs.fish.enable = true;
   programs.ssh.startAgent = true;
+
+  services.openssh = {
+    enable = true;
+    openFirewall = true;
+
+    settings = {
+      PasswordAuthentication = false;
+      KbdInteractiveAuthentication = false;
+      PermitRootLogin = "no";
+
+      AllowUsers = [ "alex" ];
+    };
+  };
 
   # List packages installed in system profile.
   environment.systemPackages = with pkgs; [
