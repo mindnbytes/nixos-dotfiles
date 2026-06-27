@@ -3,7 +3,7 @@
 	email = mindnbytes@gmail.com
 	username = mindnbytes
 [init]
-	defauldBranch = master
+	defaultBranch = master
 [core]
 	editor = hx
 [color]
