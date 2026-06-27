@@ -1,10 +1,14 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
-  imports =
-    [
-      ./hardware-configuration.nix
-    ];
+  imports = [
+    ./hardware-configuration.nix
+  ];
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
@@ -13,7 +17,8 @@
 
   networking.networkmanager.enable = true;
 
-  nixpkgs.config.allowUnfreePredicate = pkg:
+  nixpkgs.config.allowUnfreePredicate =
+    pkg:
     builtins.elem (lib.getName pkg) [
       "b43-firmware"
     ];
@@ -28,19 +33,15 @@
     enable = true;
     autoRepeatDelay = 200;
     autoRepeatInterval = 35;
-    windowManager.qtile.enable = true;  
+    windowManager.qtile.enable = true;
   };
 
   security.pam.services.login.enableGnomeKeyring = true;
-
 
   users.users.alex = {
     isNormalUser = true;
     extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
     shell = pkgs.fish;
-    packages = with pkgs; [
-      tree
-    ];
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAEBc+D/LqeB3835KXSM5J/dSU1nPwiszC5pPcGpykoi macbook-to-nixos-mini"
     ];
@@ -68,15 +69,16 @@
     vim
     wget
     git
-    helix
-    wezterm
   ];
-  
+
   fonts.packages = with pkgs; [
     nerd-fonts.jetbrains-mono
   ];
-  
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
 
   nix.gc = {
     automatic = true;
@@ -92,4 +94,3 @@
   system.stateVersion = "26.05";
 
 }
-
