@@ -10,4 +10,5 @@ private/
 .cache/
 result
 result-*
+config/fish/fish_variables
 
