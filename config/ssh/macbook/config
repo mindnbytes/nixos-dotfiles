@@ -1,0 +1,12 @@
+Host github.com
+  HostName github.com
+  User git
+  IdentitiesOnly yes
+  AddKeysToAgent yes
+  IdentityFile ~/.ssh/id_ed25519
+
+Host mini
+  HostName 192.168.2.75
+  User alex
+  IdentityFile ~/.ssh/id_ed25519_nixos_mini
+  IdentitiesOnly yes
