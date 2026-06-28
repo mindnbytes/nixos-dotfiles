@@ -39,7 +39,6 @@ if wezterm.target_triple == "x86_64-pc-windows-msvc" then
 	config.default_prog = { "C:\\Program Files\\PowerShell\\7\\pwsh.exe" }
 end
 if wezterm.target_triple == "aarch64-apple-darwin" then
-	config.default_prog = { "/opt/homebrew/bin/fish" }
 	config.font_size = 13
 end
 -- Key Bindings
