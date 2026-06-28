@@ -11,6 +11,7 @@ in
   imports = [
     ../common.nix
     ../packages.nix
+    ../packages-macbook.nix
     ../dotfiles.nix
   ];
 
