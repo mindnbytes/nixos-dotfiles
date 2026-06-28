@@ -14,6 +14,7 @@
     starship
     helix
     wezterm
+    wget
 
     gh
     fastfetch
