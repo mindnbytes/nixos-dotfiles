@@ -3,6 +3,13 @@ Host github.com
   User git
   IdentitiesOnly yes
   AddKeysToAgent yes
+  IdentityFile ~/.ssh/id_ed25519_mindnbytes
+
+Host github-ad.com
+  HostName github.com
+  User git
+  IdentitiesOnly yes
+  AddKeysToAgent yes
   IdentityFile ~/.ssh/id_ed25519
 
 Host mini
