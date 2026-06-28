@@ -7,6 +7,7 @@
     nil
     nixpkgs-fmt
     lua-language-server
+    marksman
 
     nerd-fonts.fira-code
 
