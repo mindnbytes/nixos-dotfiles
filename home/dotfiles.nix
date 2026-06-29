@@ -11,7 +11,6 @@ let
 
   commonConfigs = {
     git = "git";
-    fish = "fish";
     wezterm = "wezterm";
     helix = "helix";
   };
@@ -24,5 +23,14 @@ in
     }) commonConfigs
     // {
       "starship.toml".source = link "${dotfiles}/starship/starship.toml";
+
+      "fish/config.fish" = {
+        source = link "${dotfiles}/fish/config.fish";
+      };
+
+      "fish/functions" = {
+        source = link "${dotfiles}/fish/functions";
+        recursive = true;
+      };
     };
 }
