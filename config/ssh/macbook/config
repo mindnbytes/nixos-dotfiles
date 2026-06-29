@@ -13,7 +13,7 @@ Host github-ad.com
   IdentityFile ~/.ssh/id_ed25519
 
 Host mini
-  HostName 192.168.2.75
+  HostName 192.168.2.76
   User alex
   IdentityFile ~/.ssh/id_ed25519_nixos_mini
   IdentitiesOnly yes
