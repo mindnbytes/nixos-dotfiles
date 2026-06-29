@@ -1,7 +1,12 @@
-{ pkgs, ... }:
+{ pkgs, inputs, ... }:
 
+let
+  pkgsUnstable = import inputs.nixpkgs-unstable {
+    system = pkgs.stdenv.hostPlatform.system;
+  };
+in
 {
-  home.packages = with pkgs; [
-    llama-cpp
+  home.packages = [
+    pkgsUnstable.llama-cpp
   ];
 }

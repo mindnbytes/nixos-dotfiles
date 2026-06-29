@@ -3,6 +3,7 @@
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-26.05";
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     home-manager = {
       url = "github:nix-community/home-manager/release-26.05";
@@ -11,7 +12,7 @@
   };
 
   outputs =
-    {
+    inputs@{
       self,
       nixpkgs,
       home-manager,
@@ -46,6 +47,10 @@
 
       homeConfigurations.alex-macbook = home-manager.lib.homeManagerConfiguration {
         pkgs = mkPkgs "aarch64-darwin";
+
+        extraSpecialArgs = {
+            inherit inputs;
+        };
 
         modules = [
           ./home/profiles/macbook.nix
