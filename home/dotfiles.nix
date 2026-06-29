@@ -32,5 +32,10 @@ in
         source = link "${dotfiles}/fish/functions";
         recursive = true;
       };
+
+      "fish/completions/nix.fish".source = "${pkgs.nix}/share/fish/vendor_completions.d/nix.fish";
+
+      "fish/completions/home-manager.fish".source =
+        "${config.programs.home-manager.package}/share/fish/vendor_completions.d/home-manager.fish";
     };
 }
