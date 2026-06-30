@@ -1,0 +1,4 @@
+[[language]]
+name = "c"
+file-types = ["c", "h"]
+auto-format = true
