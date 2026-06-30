@@ -69,6 +69,7 @@
     vim
     wget
     git
+    smartmontools
   ];
 
   fonts.packages = with pkgs; [
