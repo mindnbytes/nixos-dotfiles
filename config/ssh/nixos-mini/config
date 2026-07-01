@@ -4,3 +4,10 @@ Host github.com
 	IdentityFile ~/.ssh/id_ed25519_github
 	IdentitiesOnly yes
 	AddKeysToAgent yes
+
+Host github-ad.com
+  HostName github.com
+  User git
+  IdentitiesOnly yes
+  AddKeysToAgent yes
+  IdentityFile ~/.ssh/id_ed25519_github_ad
