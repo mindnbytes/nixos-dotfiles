@@ -8,6 +8,7 @@
 {
   imports = [
     ./hardware-configuration.nix
+    ../../modules/nixos/backup/borg.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
