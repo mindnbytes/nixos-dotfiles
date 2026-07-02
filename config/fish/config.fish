@@ -13,6 +13,7 @@ end
 if status is-interactive
     # Commands to run in interactive sessions can go here
     set -U EDITOR hx
+    set -gx COLORTERM truecolor
     starship init fish | source
     zoxide init fish | source
 end
