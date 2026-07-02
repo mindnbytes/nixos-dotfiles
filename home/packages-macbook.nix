@@ -10,6 +10,7 @@ in
 {
   home.packages = [
     pkgsUnstable.llama-cpp
+    pkgsUnstable.opencode
 
     # Stable LLVM 22 toolchain
     llvm22.clang
