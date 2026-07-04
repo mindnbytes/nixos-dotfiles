@@ -1,12 +1,13 @@
 { ... }:
 
 {
-  fileSystems."/mnt/backup-hdd" = {
+  fileSystems."/mnt/backup" = {
     device = "/dev/disk/by-label/backup-hdd";
     fsType = "ext4";
     options = [
       "nofail"
-      "x-systemd.device-timeout=10s"
+      "x-systemd.automount"
+      "x-systemd.device-timeout=60s"
     ];
   };
 }
