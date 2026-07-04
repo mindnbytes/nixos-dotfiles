@@ -1,18 +1,62 @@
 { ... }:
 
+let
+  commonCompression = "auto,zstd,3";
+
+  commonKeep = {
+    daily = 7;
+    weekly = 4;
+    monthly = 6;
+  };
+
+  commonExclude = [
+    "**/.cache"
+    "**/node_modules"
+    "**/target"
+    "**/build"
+    "**/dist"
+    "**/.Trash-*"
+  ];
+in
 {
-  services.borgbackup.jobs.dummy-local = {
-    paths = [
-      "/home/alex/borg-test/source"
-    ];
-    repo = "/home/alex/borg-test/repo";
+  services.borgbackup.jobs = {
+    mini-home = {
+      paths = [
+        "/home/alex/Projects"
+        "/home/alex/nixos-dotfiles"
+      ];
+      exclude = commonExclude ++ [
+        "/home/alex/Downloads"
+      ];
+      repo = "/mnt/backup/borg-mini-home";
+      removableDevice = true;
+      doInit = false;
 
-    doInit = true;
-    encryption.mode = "none";
+      encryption = {
+        mode = "repokey-blake2";
+        passCommand = "cat /var/lib/borg-secrets/mini-home.passphrase";
+      };
 
-    compression = "auto,zstd";
+      compression = commonCompression;
 
-    # no timer for learning
-    startAt = [ ];
-  };  
+      archiveBaseName = "mini-home";
+
+      prune.keep = commonKeep;
+
+      extraCreateArgs = [
+        "--stats"
+        "--checkpoint-interval"
+        "600"
+      ];
+
+      # Manual mode first. Enable timer later.
+      startAt = [ ];
+    };
+    # mini-server goes here!
+  };
+  # Optional explicit guard. The Borg module already adds RequiresMountsFor
+  # for local repos, but keeping this explicit is readable.
+  systemd.services.borgbackup-job-mini-home.unitConfig.RequiresMountsFor = [
+    "/mnt/backup"
+  ];
 }
