@@ -49,8 +49,9 @@ in
         "600"
       ];
 
-      # Manual mode first. Enable timer later.
-      startAt = [ ];
+      startAt = "*-*-* 15:00:00";
+      persistentTimer = true;
+      inhibitsSleep = true;
     };
     # mini-server goes here!
   };
