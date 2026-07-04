@@ -8,6 +8,7 @@
 {
   imports = [
     ./hardware-configuration.nix
+    ./storage.nix
     ../../modules/nixos/backup/borg.nix
   ];
 
