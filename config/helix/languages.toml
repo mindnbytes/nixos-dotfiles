@@ -2,3 +2,22 @@
 name = "c"
 file-types = ["c", "h"]
 auto-format = true
+
+# python related
+
+[language-server.ruff]
+command = "ruff"
+args = ["server"]
+
+[language-server.ty]
+command = "ty"
+args = ["server"]
+
+[[language]]
+name = "python"
+language-servers = [
+  { name = "ruff", only-features = ["diagnostics", "code-action"] },
+  { name = "ty", except-features = ["format"] },
+]
+auto-format = true
+formatter = { command = "ruff", args = ["format", "-"] }
