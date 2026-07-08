@@ -12,3 +12,5 @@
 	autoSetupRemote = true
 [url "git@github-ad.com:ademyanchuk/"]
 	insteadOf = git@github.com:ademyanchuk/
+[pull]
+	ff = only
