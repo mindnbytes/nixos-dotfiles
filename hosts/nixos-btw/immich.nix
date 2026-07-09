@@ -34,7 +34,7 @@
   services.redis.servers.immich.logLevel = "warning";
 
   # Prevent services from starting if /srv is not mounted.
-  systemd.services.postgresql.unitConfig.requiresMountsFor = [ "/srv"];
-  systemd.services.immich-server.unitConfig.requiresMountsFor = [ "/srv"];
-  systemd.services.immich-machine-learning.unitConfig.requiresMountsFor = "/srv";
+  systemd.services.postgresql.unitConfig.RequiresMountsFor = [ "/srv"];
+  systemd.services.immich-server.unitConfig.RequiresMountsFor = [ "/srv"];
+  systemd.services.immich-machine-learning.unitConfig.RequiresMountsFor = "/srv";
 }
