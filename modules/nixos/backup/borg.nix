@@ -53,11 +53,47 @@ in
       persistentTimer = true;
       inhibitsSleep = true;
     };
-    # mini-server goes here!
+
+    mini-immich = {
+      paths = [
+        "/srv/immich/media"
+      ];
+
+      exclude = commonExclude ++ [
+        "/srv/**/tmp"
+      ];
+
+      repo = "/mnt/backup/borg-mini-immich";
+      removableDevice = true;
+      doInit = false;
+
+      encryption = {
+        mode = "repokey-blake2";
+        passCommand = "cat /var/lib/borg-secrets/mini-immich.passphrase";
+      };
+
+      compression = commonCompression;
+      archiveBaseName = "mini-immich";
+      prune.keep = commonKeep;
+
+      extraCreateArgs = [
+        "--stats"
+        "--checkpoint-interval"
+        "600"
+      ];
+
+      startAt = "*-*-* 03:00:00";
+      persistentTimer = true;
+      inhibitsSleep = true;
+    };
   };
   # Optional explicit guard. The Borg module already adds RequiresMountsFor
   # for local repos, but keeping this explicit is readable.
   systemd.services.borgbackup-job-mini-home.unitConfig.RequiresMountsFor = [
+    "/mnt/backup"
+  ];
+
+  systemd.services.borgbackup-job-mini-immich.unitConfig.RequiresMountsFor = [
     "/mnt/backup"
   ];
 }
