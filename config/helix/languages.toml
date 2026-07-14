@@ -39,5 +39,5 @@ expr = "import <nixpkgs> { }"
 [language-server.nixd.config.options]
 # For NixOS/home-manager option completion, link to your flake expression
 # e.g., expr = "(builtins.getFlake \"/path/to/your/flake\").nixosConfigurations.yourhostname.options"
-nixos = { expr = "(builtins.getFlake \"~/nixos-dotfiles\".nixosConfigurations.nixos-btw.options" }
-home-manager = { expr = "(builtins.getFlake \"~/nixos-dotfiles\".homeConfigurations.alex-macbook.options" }
+nixos = { expr = "(builtins.getFlake \"github:mindnbytes/nixos-dotfiles\".nixosConfigurations.nixos-btw.options" }
+home-manager = { expr = "(builtins.getFlake \"github:mindnbytes/nixos-dotfiles\".homeConfigurations.alex-macbook.options" }
