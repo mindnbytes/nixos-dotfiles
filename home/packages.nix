@@ -5,6 +5,7 @@
 
   home.packages = with pkgs; [
     nil
+    nixd
     nixpkgs-fmt
     lua-language-server
     marksman
