@@ -21,3 +21,23 @@ language-servers = [
 ]
 auto-format = true
 formatter = { command = "ruff", args = ["format", "-"] }
+
+# nix
+[language-server.nixd]
+command = "nixd"
+args = ["--semantic-tokens=true"]
+
+[[language]]
+name = "nix"
+language-servers = [ "nixd" ]
+formatter = { command = "nixfmt" }
+
+[language-server.nixd.config.nixpkgs]
+# Point to your local nixpkgs channel or flake inputs (e.g. /nix/var/nix/profiles/per-user/root/channels/nixpkgs)
+expr = "import <nixpkgs> { }"
+
+[language-server.nixd.config.options]
+# For NixOS/home-manager option completion, link to your flake expression
+# e.g., expr = "(builtins.getFlake \"/path/to/your/flake\").nixosConfigurations.yourhostname.options"
+nixos = { expr = "(builtins.getFlake \"~/nixos-dotfiles\".nixosConfigurations.nixos-btw.options" }
+home-manager = { expr = "(builtins.getFlake \"~/nixos-dotfiles\".homeConfigurations.alex-macbook.options" }
