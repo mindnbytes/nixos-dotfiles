@@ -4,19 +4,12 @@
   fonts.fontconfig.enable = true;
 
   home.packages = with pkgs; [
-    nixd
-    nixfmt
-    lua-language-server
-    marksman
-
     nerd-fonts.fira-code
 
     fish
     starship
-    helix
     wezterm
     wget
-
     gh
     fastfetch
     ripgrep

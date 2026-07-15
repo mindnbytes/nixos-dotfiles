@@ -1,6 +1,5 @@
 {
   config,
-  lib,
   pkgs,
   ...
 }:
@@ -12,7 +11,6 @@ let
   commonConfigs = {
     git = "git";
     wezterm = "wezterm";
-    helix = "helix";
   };
 in
 {

@@ -20,7 +20,5 @@ in
     llvm22.compiler-rt
     # Python dev tools
     pkgs.uv
-    pkgs.ruff
-    pkgs.ty
   ];
 }
