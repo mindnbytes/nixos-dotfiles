@@ -1,4 +1,4 @@
-{ config, inputs, ... }:
+{ config, ... }:
 
 let
   dotfiles = "${config.home.homeDirectory}/nixos-dotfiles/config";
@@ -14,8 +14,6 @@ in
     ../packages-macbook.nix
     ../dotfiles.nix
   ];
-
-  nix.nixPath = [ "nixpkgs=${inputs.nixpkgs}"];
 
   # profile specific
   home.file.".ssh/config".source = link "${dotfiles}/ssh/macbook/config";
