@@ -17,4 +17,7 @@ in
 
   # profile specific
   home.file.".ssh/config".source = link "${dotfiles}/ssh/macbook/config";
+
+  # Let Home Manager install and manage itself.
+  programs.home-manager.enable = true;
 }

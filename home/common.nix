@@ -13,6 +13,4 @@
   # the Home Manager release notes for a list of state version
   # changes in each release.
   home.stateVersion = "26.05";
-  # Let Home Manager install and manage itself.
-  programs.home-manager.enable = true;
 }
