@@ -26,10 +26,7 @@
   programs.fish = {
     enable = true;
 
-    # Home Manager generates completions from the man pages of installed
-    # packages. This is already true by default, but keeping it explicit
-    # documents why manual completion links are unnecessary.
-    generateCompletions = true;
+    generateCompletions = false;
 
     interactiveShellInit = ''
       set -g fish_greeting
