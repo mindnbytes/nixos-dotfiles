@@ -6,8 +6,6 @@
   home.packages = with pkgs; [
     nerd-fonts.fira-code
 
-    fish
-    starship
     wezterm
     wget
     gh
@@ -18,6 +16,5 @@
     eza
     bat
     btop
-    zoxide
   ];
 }
