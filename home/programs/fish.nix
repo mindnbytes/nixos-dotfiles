@@ -26,6 +26,24 @@
   programs.fish = {
     enable = true;
 
+    # explicitly add vendor completions for now, I don't thinks it is supposed to be this way
+    shellInitLast = ''
+      set -l hm_vendor_completions \
+        "$HOME/.nix-profile/share/fish/vendor_completions.d"
+
+      if test -d "$hm_vendor_completions"
+        set -p fish_complete_path "$hm_vendor_completions"
+      end
+    ''
+    + lib.optionalString pkgs.stdenv.isDarwin ''
+      set -l nix_vendor_completions \
+        /nix/var/nix/profiles/default/share/fish/vendor_completions.d
+
+      if test -d "$nix_vendor_completions"
+        set -p fish_complete_path "$nix_vendor_completions"
+      end
+    '';
+
     generateCompletions = false;
 
     interactiveShellInit = ''
