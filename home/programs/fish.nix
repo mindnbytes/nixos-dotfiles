@@ -15,7 +15,13 @@
     "/opt/homebrew/sbin"
   ];
 
-  programs.man.enable = true;
+  programs.man = {
+    enable = true;
+
+    # Home Manager's Fish module currently enables this by default,
+    # but macOS has no configured man package for building apropos caches.
+    generateCaches = pkgs.stdenv.isLinux;
+  };
 
   programs.fish = {
     enable = true;
