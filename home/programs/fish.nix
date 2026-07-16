@@ -1,6 +1,22 @@
-{ lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
+  home.sessionPath = [
+    "${config.home.profileDirectory}/bin"
+  ]
+  ++ lib.optionals pkgs.stdenv.isDarwin [
+    "/nix/var/nix/profiles/default/bin"
+    "/opt/homebrew/bin"
+    "/opt/homebrew/sbin"
+  ];
+
+  programs.man.enable = true;
+
   programs.fish = {
     enable = true;
 
