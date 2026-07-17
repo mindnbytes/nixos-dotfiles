@@ -20,8 +20,8 @@
     }:
     let
       mkPkgs =
-        system:
-        import nixpkgs {
+        nixpkgsInput: system:
+        import nixpkgsInput {
           inherit system;
           # Uncomment if you need proprietary packages
           # config.allowUnfree = true;
@@ -45,16 +45,21 @@
         ];
       };
 
-      homeConfigurations.alex-macbook = home-manager.lib.homeManagerConfiguration {
-        pkgs = mkPkgs "aarch64-darwin";
+      homeConfigurations.alex-macbook =
+        let
+          system = "aarch64-darwin";
+        in
+        home-manager.lib.homeManagerConfiguration {
+          pkgs = mkPkgs nixpkgs system;
 
-        extraSpecialArgs = {
+          extraSpecialArgs = {
             inherit inputs;
-        };
+            pkgsUnstable = mkPkgs inputs.nixpkgs-unstable system;
+          };
 
-        modules = [
-          ./home/profiles/macbook.nix
-        ];
-      };
+          modules = [
+            ./home/profiles/macbook.nix
+          ];
+        };
     };
 }

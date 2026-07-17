@@ -1,11 +1,7 @@
-{ pkgs, inputs, ... }:
+{ pkgs, pkgsUnstable, ... }:
 
 let
-  pkgsUnstable = import inputs.nixpkgs-unstable {
-    system = pkgs.stdenv.hostPlatform.system;
-  };
   llvm22 = pkgs.llvmPackages_22;
-
 in
 {
   home.packages = [
