@@ -26,21 +26,17 @@
   programs.fish = {
     enable = true;
 
-    # explicitly add vendor completions for now, I don't thinks it is supposed to be this way
-    shellInitLast = ''
-      set -l hm_vendor_completions \
-        "$HOME/.nix-profile/share/fish/vendor_completions.d"
+    shellInitLast = lib.optionalString pkgs.stdenv.isDarwin ''
+      # Home Manager's aggregate profile contains package-provided Fish
+      # completions, but Fish on macOS does not discover these profile
+      # directories automatically.
+      for dir in \
+        "${config.home.profileDirectory}/share/fish/vendor_completions.d" \
+        "/nix/var/nix/profiles/default/share/fish/vendor_completions.d"
 
-      if test -d "$hm_vendor_completions"
-        set -p fish_complete_path "$hm_vendor_completions"
-      end
-    ''
-    + lib.optionalString pkgs.stdenv.isDarwin ''
-      set -l nix_vendor_completions \
-        /nix/var/nix/profiles/default/share/fish/vendor_completions.d
-
-      if test -d "$nix_vendor_completions"
-        set -p fish_complete_path "$nix_vendor_completions"
+        if test -d "$dir"; and not contains -- "$dir" $fish_complete_path
+          set -p fish_complete_path "$dir"
+        end
       end
     '';
 
