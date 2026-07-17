@@ -49,15 +49,6 @@
     interactiveShellInit = ''
       set -g fish_greeting
       set -gx COLORTERM truecolor
-    ''
-    + lib.optionalString pkgs.stdenv.isDarwin ''
-      # Homebrew is outside Nix, so detect its architecture-specific path
-      # at shell startup.
-      if test -d /opt/homebrew/bin
-        fish_add_path --global /opt/homebrew/bin /opt/homebrew/sbin
-      else if test -d /usr/local/bin
-        fish_add_path --global /usr/local/bin /usr/local/sbin
-      end
     '';
 
     functions.la = {
