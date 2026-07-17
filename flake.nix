@@ -28,22 +28,31 @@
         };
     in
     {
-      nixosConfigurations.nixos-btw = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
+      nixosConfigurations.nixos-btw =
+        let
+          system = "x86_64-linux";
+        in
+        nixpkgs.lib.nixosSystem {
+          system = system;
 
-        modules = [
-          ./hosts/nixos-btw/configuration.nix
+          modules = [
+            ./hosts/nixos-btw/configuration.nix
 
-          home-manager.nixosModules.home-manager
-          {
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.backupFileExtension = "backup";
+            home-manager.nixosModules.home-manager
+            {
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              home-manager.backupFileExtension = "backup";
 
-            home-manager.users.alex = import ./home/profiles/nixos-mini.nix;
-          }
-        ];
-      };
+              home-manager.extraSpecialArgs = {
+                inherit inputs;
+                pkgsUnstable = mkPkgs inputs.nixpkgs-unstable system;
+              };
+
+              home-manager.users.alex = import ./home/profiles/nixos-mini.nix;
+            }
+          ];
+        };
 
       homeConfigurations.alex-macbook =
         let
