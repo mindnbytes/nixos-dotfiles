@@ -12,6 +12,7 @@
     ./immich.nix
     ../../modules/nixos/backup/borg.nix
     ../../modules/nixos/services/caddy.nix
+    ../../modules/nixos/services/beszel.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
