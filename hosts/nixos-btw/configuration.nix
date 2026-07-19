@@ -31,17 +31,7 @@
 
   time.timeZone = "Europe/Berlin";
 
-  services.gnome.gcr-ssh-agent.enable = false;
-  services.gnome.gnome-keyring.enable = true;
-  services.displayManager.ly.enable = true;
-  services.xserver = {
-    enable = true;
-    autoRepeatDelay = 200;
-    autoRepeatInterval = 35;
-    windowManager.qtile.enable = true;
-  };
-
-  security.pam.services.login.enableGnomeKeyring = true;
+  services.xserver.enable = false;
 
   users.users.alex = {
     isNormalUser = true;
@@ -52,7 +42,6 @@
     ];
   };
 
-  programs.firefox.enable = true;
   programs.fish.enable = true;
   programs.ssh.startAgent = true;
 

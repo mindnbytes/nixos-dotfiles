@@ -14,8 +14,5 @@ in
     ../dotfiles.nix
   ];
   # profile specific
-  xdg.configFile."qtile".source = link "${dotfiles}/qtile";
-  xdg.configFile."qtile".recursive = true;
-
   home.file.".ssh/config".source = link "${dotfiles}/ssh/nixos-mini/config";
 }
