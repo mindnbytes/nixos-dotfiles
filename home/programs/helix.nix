@@ -41,6 +41,8 @@ in
 
       pkgs.lua-language-server
       pkgs.marksman
+      pkgs.markdown-oxide
+      pkgs.harper
 
       # Provides clangd and clang-format for C development.
       pkgs.llvmPackages_22.clang-tools
@@ -56,6 +58,10 @@ in
     # Generates ~/.config/helix/languages.toml
     languages = {
       language-server = {
+        harper-ls = {
+          command = "harper-ls";
+          args = [ "--stdio" ];
+        };
         ruff = {
           command = "ruff";
           args = [ "server" ];
@@ -73,12 +79,10 @@ in
           config.nixd = {
             formatting.command = [ "nixfmt" ];
 
-            nixpkgs.expr =
-              "import ${localFlake}.inputs.nixpkgs { }";
+            nixpkgs.expr = "import ${localFlake}.inputs.nixpkgs { }";
 
             options = {
-              nixos.expr =
-                "${localFlake}.nixosConfigurations.nixos-btw.options";
+              nixos.expr = "${localFlake}.nixosConfigurations.nixos-btw.options";
 
               home-manager.expr = homeManagerOptionsExpr;
             };
@@ -88,8 +92,19 @@ in
 
       language = [
         {
+          name = "markdown";
+          language-servers = [
+            "marksman"
+            "markdown-oxide"
+            "harper-ls"
+          ];
+        }
+        {
           name = "c";
-          file-types = [ "c" "h" ];
+          file-types = [
+            "c"
+            "h"
+          ];
           auto-format = true;
         }
 
@@ -114,7 +129,10 @@ in
 
           formatter = {
             command = "ruff";
-            args = [ "format" "-" ];
+            args = [
+              "format"
+              "-"
+            ];
           };
         }
 
