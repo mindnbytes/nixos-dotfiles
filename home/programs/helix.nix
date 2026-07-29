@@ -53,6 +53,9 @@ in
       theme = "tokyonight_moon";
 
       editor.file-picker.hidden = false;
+      # this auto-save prevents auto-format
+      # auto-format work on :write
+      editor.auto-save.after-delay.enable = true;
     };
 
     # Generates ~/.config/helix/languages.toml
