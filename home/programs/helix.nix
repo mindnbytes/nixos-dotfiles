@@ -46,6 +46,10 @@ in
 
       # Provides clangd and clang-format for C development.
       pkgs.llvmPackages_22.clang-tools
+      # golang tools
+      pkgs.gopls
+      pkgs.golangci-lint
+      pkgs.golangci-lint-langserver
     ];
 
     # Generates ~/.config/helix/config.toml

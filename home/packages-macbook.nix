@@ -17,5 +17,7 @@ in
     llvm22.compiler-rt
     # Python dev tools
     pkgs.uv
+    # Dev-machine only
+    pkgs.go
   ];
 }
