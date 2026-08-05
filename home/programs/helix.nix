@@ -54,7 +54,7 @@ in
 
     # Generates ~/.config/helix/config.toml
     settings = {
-      theme = "tokyonight_moon";
+      theme = "tokyonight_storm";
 
       editor.file-picker.hidden = false;
       # this auto-save prevents auto-format
