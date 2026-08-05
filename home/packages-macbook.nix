@@ -6,7 +6,6 @@ in
 {
   home.packages = [
     pkgsUnstable.llama-cpp
-    pkgsUnstable.opencode
     pkgs.ghostty-bin
 
     # Stable LLVM 22 toolchain
