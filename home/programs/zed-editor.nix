@@ -35,6 +35,16 @@
       cursor_blink = false;
       cursor_shape = "bar";
       autosave = "on_focus_change";
+      ######### AI agents, models, edit predictions #########
+      agent = {
+        default_model = {
+          provider = "openai-subscribed";
+          model = "gpt-5.5";
+          enable_thinking = true;
+          effort = "high";
+        };
+      };
+
       # Defuault provider but don't show unless triggered manually
       edit_predictions = {
         provider = "zed";
