@@ -63,7 +63,7 @@
         cursor_shape = "bar";
 
         font_family = "FiraCode Nerd Font";
-        font_size = 15;
+        font_size = 13;
         line_height = "comfortable";
 
         shell = "system";
