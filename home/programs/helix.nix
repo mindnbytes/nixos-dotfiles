@@ -50,6 +50,8 @@ in
       pkgs.gopls
       pkgs.golangci-lint
       pkgs.golangci-lint-langserver
+      # bash LS
+      pkgs.bash-language-server
     ];
 
     # Generates ~/.config/helix/config.toml
