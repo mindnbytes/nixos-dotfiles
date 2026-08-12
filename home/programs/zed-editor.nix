@@ -1,8 +1,9 @@
-{ pkgs, ... }:
+{ pkgs, pkgsUnstable, ... }:
 {
   # Many default configuration options are skipped, check Zed config reference
   programs.zed-editor = {
     enable = true;
+    package = pkgsUnstable.zed-editor;
     extraPackages = [
       pkgs.nixd
       pkgs.nixfmt
@@ -40,7 +41,7 @@
       agent = {
         default_model = {
           provider = "openai-subscribed";
-          model = "gpt-5.5";
+          model = "gpt-5.6-luna";
           enable_thinking = true;
           effort = "high";
         };
