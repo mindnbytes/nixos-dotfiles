@@ -9,6 +9,7 @@
     ];
     extensions = [
       "nix"
+      "dockerfile"
       "catppuccin"
       "catppuccin-icons"
     ];
