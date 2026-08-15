@@ -24,3 +24,9 @@ Host mini
   User alex
   IdentityFile ~/.ssh/id_ed25519_nixos_mini
   IdentitiesOnly yes
+
+Host dev.local
+  HostName dev.local
+  User alex
+  IdentityFile ~/.ssh/id_ed25519_nix_vm
+  IdentitiesOnly yes
