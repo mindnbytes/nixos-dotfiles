@@ -1,4 +1,16 @@
 { pkgs, pkgsUnstable, ... }:
+
+let
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+
+  localFlake = "(builtins.getFlake (builtins.toString ./.))";
+
+  homeManagerOptionsExpr =
+    if isDarwin then
+      "${localFlake}.homeConfigurations.alex-macbook.options"
+    else
+      "${localFlake}.nixosConfigurations.nixos-btw.options.home-manager.users.type.getSubOptions []";
+in
 {
   # Many default configuration options are skipped, check Zed config reference
   programs.zed-editor = {
@@ -45,6 +57,48 @@
           enable_thinking = true;
           effort = "high";
         };
+
+        profiles = {
+          "insightful-code-review" = {
+            name = "Insightful Code Review";
+
+            # Keep reviews observational: inspect the project and diagnostics,
+            # but do not modify files, execute commands, or access the network.
+            tools = {
+              diagnostics = true;
+              find_path = true;
+              grep = true;
+              list_directory = true;
+              read_file = true;
+              skill = true;
+
+              create_directory = false;
+              delete_path = false;
+              edit_file = false;
+              fetch = false;
+              move_path = false;
+              search_web = false;
+              spawn_agent = false;
+              terminal = false;
+              write_file = false;
+            };
+
+            enable_all_context_servers = false;
+            context_servers = { };
+
+            default_model = {
+              provider = "openai-subscribed";
+              model = "gpt-5.6-sol";
+              enable_thinking = true;
+              effort = "high";
+            };
+          };
+        };
+
+        auto_compact = {
+          enabled = true;
+          threshold = "90%";
+        };
       };
 
       # Defuault provider but don't show unless triggered manually
@@ -71,7 +125,7 @@
         shell = "system";
         env = {
           EDITOR = "zed --wait";
-          TERM = "ghostty";
+          VISUAL = "zed --wait";
         };
       };
 
@@ -94,8 +148,17 @@
       lsp = {
         nixd = {
           settings = {
-            diagnostic = {
-              suppress = [ "sema-extra-with" ];
+            nixd = {
+              formatting.command = [ "nixfmt" ];
+
+              nixpkgs.expr = "import ${localFlake}.inputs.nixpkgs { }";
+
+              options = {
+                nixos.expr = "${localFlake}.nixosConfigurations.nixos-btw.options";
+                home-manager.expr = homeManagerOptionsExpr;
+              };
+
+              diagnostic.suppress = [ "sema-extra-with" ];
             };
           };
         };
