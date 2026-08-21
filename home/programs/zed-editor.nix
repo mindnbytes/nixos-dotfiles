@@ -19,12 +19,21 @@ in
     extraPackages = [
       pkgs.nixd
       pkgs.nixfmt
+      pkgs.dockerfile-language-server
     ];
     extensions = [
       "nix"
       "dockerfile"
       "catppuccin"
       "catppuccin-icons"
+    ];
+    userKeymaps = [
+      {
+        context = "Workspace";
+        bindings = {
+          "ctrl-w t" = "terminal_panel::ToggleFocus";
+        };
+      }
     ];
 
     userSettings = {
@@ -40,7 +49,7 @@ in
       ui_font_size = 16;
       # Buffer Font - Used by editor buffers
       # use ".ZedMono" for the bundled default monospace (currently Lilex)
-      buffer_font_family = ".ZedMono";
+      buffer_font_family = "JetBrainsMono Nerd Font Mono";
       buffer_font_size = 15;
       buffer_font_weight = 400;
       # Line height "comfortable" (1.618), "standard" (1.3) or custom: `{ "custom": 2 }`
@@ -49,6 +58,7 @@ in
       cursor_blink = false;
       cursor_shape = "bar";
       autosave = "on_focus_change";
+      colorize_brackets = true;
       ######### AI agents, models, edit predictions #########
       agent = {
         default_model = {
@@ -115,10 +125,12 @@ in
 
       ######### Terminal #########
       terminal = {
+        dock = "right";
+        default_width = 320;
         blinking = "off";
         cursor_shape = "bar";
 
-        font_family = "FiraCode Nerd Font";
+        font_family = "JetBrainsMono Nerd Font";
         font_size = 13;
         line_height = "comfortable";
 
