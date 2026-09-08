@@ -22,13 +22,9 @@
 
   networking.networkmanager.enable = true;
 
-  nixpkgs.config.allowUnfreePredicate =
-    pkg:
-    builtins.elem (lib.getName pkg) [
-      "b43-firmware"
-    ];
-  networking.enableB43Firmware = true;
-
+  nixpkgs.config.permittedInsecurePackages = [
+    "immich-2.7.5"
+  ];
   time.timeZone = "Europe/Berlin";
 
   services.xserver.enable = false;
