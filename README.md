@@ -48,6 +48,7 @@ For a fresh install, follow the runbook: it includes setting Alex's sudo passwor
 
 ## Runbooks
 
+- [Nix editor completion](docs/nix-editor-completion.md): dotfiles defaults and project-specific overrides for Helix and Zed.
 - [Immich server operations](docs/immich-server-operations.md): deployment, backup, restore, and fresh installation.
 - [Borg backup checklist](docs/borg-backup-job-checklist.md): secrets, repository initialization, and restore checks.
 - [Beszel setup](docs/beszel-setup-notes.md): hub account, agent authorization, and monitoring.

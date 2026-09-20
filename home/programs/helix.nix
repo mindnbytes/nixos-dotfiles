@@ -1,22 +1,7 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
 let
-  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
-
-  localFlake = "(builtins.getFlake (builtins.toString ./.))";
-
-  # Macbook uses standalone Home Manager:
-  #
-  #   home-manager switch --flake .#alex-macbook
-  #
-  # NixOS mini uses Home Manager as a NixOS module:
-  #
-  #   nixos-rebuild switch --flake .#nixos-btw
-  homeManagerOptionsExpr =
-    if isDarwin then
-      "${localFlake}.homeConfigurations.alex-macbook.options"
-    else
-      "${localFlake}.nixosConfigurations.nixos-btw.options.home-manager.users.type.getSubOptions []";
+  nixdSettings = import ./nixd-settings.nix { inherit config pkgs; };
 in
 {
   programs.helix = {
@@ -85,17 +70,7 @@ in
           command = "nixd";
           args = [ "--semantic-tokens=true" ];
 
-          config.nixd = {
-            formatting.command = [ "nixfmt" ];
-
-            nixpkgs.expr = "import ${localFlake}.inputs.nixpkgs { }";
-
-            options = {
-              nixos.expr = "${localFlake}.nixosConfigurations.nixos-btw.options";
-
-              home-manager.expr = homeManagerOptionsExpr;
-            };
-          };
+          config.nixd = nixdSettings;
         };
       };
 

@@ -1,15 +1,7 @@
-{ pkgs, pkgsUnstable, ... }:
+{ config, pkgs, pkgsUnstable, ... }:
 
 let
-  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
-
-  localFlake = "(builtins.getFlake (builtins.toString ./.))";
-
-  homeManagerOptionsExpr =
-    if isDarwin then
-      "${localFlake}.homeConfigurations.alex-macbook.options"
-    else
-      "${localFlake}.nixosConfigurations.nixos-btw.options.home-manager.users.type.getSubOptions []";
+  nixdSettings = import ./nixd-settings.nix { inherit config pkgs; };
 in
 {
   # Many default configuration options are skipped, check Zed config reference
@@ -123,16 +115,7 @@ in
       lsp = {
         nixd = {
           settings = {
-            nixd = {
-              formatting.command = [ "nixfmt" ];
-
-              nixpkgs.expr = "import ${localFlake}.inputs.nixpkgs { }";
-
-              options = {
-                nixos.expr = "${localFlake}.nixosConfigurations.nixos-btw.options";
-                home-manager.expr = homeManagerOptionsExpr;
-              };
-
+            nixd = nixdSettings // {
               diagnostic.suppress = [ "sema-extra-with" ];
             };
           };
