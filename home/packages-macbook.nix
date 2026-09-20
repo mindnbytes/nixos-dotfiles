@@ -4,7 +4,11 @@ let
   llvm22 = pkgs.llvmPackages_22;
 in
 {
+  fonts.fontconfig.enable = true;
+
   home.packages = [
+    pkgs.nerd-fonts.fira-code
+    pkgsUnstable.wezterm
     pkgsUnstable.llama-cpp
     pkgs.ghostty-bin
 

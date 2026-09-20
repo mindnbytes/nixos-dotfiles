@@ -8,6 +8,9 @@ in
   home.username = "alex";
   home.homeDirectory = "/home/alex";
 
+  # This host is accessed through SSH and needs no user font configuration.
+  fonts.fontconfig.enable = false;
+
   imports = [
     ../common.nix
     ../packages.nix
