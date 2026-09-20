@@ -1,6 +1,6 @@
 # Beszel Setup Notes
 
-This document records the imperative setup steps required around the declarative NixOS configuration in `beszel.nix`.
+This document records the imperative setup steps required around the declarative NixOS configuration in `hosts/nixos-btw/beszel.nix`.
 
 Most of Beszel is configured declaratively, but the initial hub account, agent authorization key, and agent registration are created through the web interface and local files.
 

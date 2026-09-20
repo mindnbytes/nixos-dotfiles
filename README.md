@@ -32,8 +32,7 @@ Git, SSH, WezTerm, and Starship configs link to the live checkout. Edits to thos
 ## Where things live
 
 - `flake.nix`: inputs and the two configuration targets.
-- `hosts/nixos-btw/`: server hardware, storage, users, and Immich.
-- `modules/nixos/`: Borg, Caddy, and Beszel configuration.
+- `hosts/nixos-btw/`: server hardware, storage, users, Immich, Borg, Caddy, and Beszel.
 - `home/`: shared packages, shell/editor settings, and machine profiles.
 - `config/`: application dotfiles linked into the home directory.
 - `docs/`: installation and recovery procedures.

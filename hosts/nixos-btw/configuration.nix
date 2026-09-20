@@ -10,9 +10,9 @@
     ./hardware-configuration.nix
     ./storage.nix
     ./immich.nix
-    ../../modules/nixos/backup/borg.nix
-    ../../modules/nixos/services/caddy.nix
-    ../../modules/nixos/services/beszel.nix
+    ./borg.nix
+    ./caddy.nix
+    ./beszel.nix
   ];
 
   boot.loader.systemd-boot.enable = true;

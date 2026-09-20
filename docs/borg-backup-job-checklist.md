@@ -108,13 +108,7 @@ This keeps failure modes separate. A failed database dump should not necessarily
 Example file:
 
 ```text
-hosts/mini/backup.nix
-```
-
-or:
-
-```text
-modules/nixos/backup/borg.nix
+hosts/nixos-btw/borg.nix
 ```
 
 Example contents:
