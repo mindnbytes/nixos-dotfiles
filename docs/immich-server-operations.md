@@ -209,14 +209,31 @@ The repository does not declare OS disk partitioning. Before this procedure, pro
    lsblk --fs
    ```
 
-4. Install the host configuration:
+4. Install the host configuration and set `alex`'s local password before rebooting:
 
    ```bash
    sudo nixos-install --flake /mnt/etc/nixos/nixos-dotfiles#nixos-btw
+   sudo nixos-enter --root /mnt -c 'passwd alex'
+   ```
+
+   This sets the password used by `sudo`. The root password prompted for by `nixos-install` does not set `alex`'s password. SSH access remains key-only.
+
+   Reboot after setting the password:
+
+   ```bash
    sudo reboot
    ```
 
-5. Restore the Borg passphrase from its separate secret copy:
+5. After reboot, verify access from the Mac:
+
+   ```bash
+   ssh mini
+   sudo -v
+   ```
+
+   Authenticate to SSH with your key, then enter the newly created `alex` password for `sudo`. Run the remaining commands on the server.
+
+6. Restore the Borg passphrase from its separate secret copy:
 
    ```bash
    sudo install -d -m 700 -o root -g root /var/lib/borg-secrets
@@ -224,7 +241,7 @@ The repository does not declare OS disk partitioning. Before this procedure, pro
      /var/lib/borg-secrets/mini-immich.passphrase
    ```
 
-6. Confirm access to the existing repository:
+7. Confirm access to the existing repository:
 
    ```bash
    findmnt /mnt/backup
@@ -234,9 +251,9 @@ The repository does not declare OS disk partitioning. Before this procedure, pro
 
    Do not run `borg init` when recovering the existing repository.
 
-7. Recover Immich:
+8. Recover Immich:
 
    - If the `services` filesystem still contains `/srv/immich/media` and `/srv/postgresql`, start the system normally and verify Immich.
    - If the `services` filesystem is blank or replaced, restore the Borg archive through step 6 of the restore procedure. Open the Immich welcome screen, choose **Restore from backup**, select a dump from `/srv/immich/media/backups`, and complete onboarding.
 
-8. Verify the deployment and run one manual backup using the backup procedure above.
+9. Verify the deployment and run one manual backup using the backup procedure above.
