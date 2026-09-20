@@ -19,6 +19,12 @@ in
   # profile specific
   home.file.".ssh/config".source = link "${dotfiles}/ssh/macbook/config";
 
+  programs.direnv = {
+    enable = true;
+    enableFishIntegration = true;
+    nix-direnv.enable = true;
+  };
+
   # Let Home Manager install and manage itself.
   programs.home-manager.enable = true;
 }
