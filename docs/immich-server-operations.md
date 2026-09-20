@@ -23,7 +23,11 @@ Immich creates database dumps inside its media directory. Borg backs up the comp
 
 ## Deploy or update
 
-Run these commands from the repository root on `nixos-btw`.
+Use the home checkout for edits and deployments on `nixos-btw`:
+
+```bash
+cd /home/alex/nixos-dotfiles
+```
 
 1. Verify the service filesystem:
 
@@ -233,7 +237,18 @@ The repository does not declare OS disk partitioning. Before this procedure, pro
 
    Authenticate to SSH with your key, then enter the newly created `alex` password for `sudo`. Run the remaining commands on the server.
 
-6. Restore the Borg passphrase from its separate secret copy:
+6. Copy the installation checkout to the home location expected by the dotfile links:
+
+   These commands assume `/home/alex/nixos-dotfiles` does not already exist.
+
+   ```bash
+   sudo cp -a /etc/nixos/nixos-dotfiles /home/alex/nixos-dotfiles
+   sudo chown -R alex:users /home/alex/nixos-dotfiles
+   ```
+
+   The existing out-of-store links resolve once this copy exists; copying alone does not require a rebuild. Use `/home/alex/nixos-dotfiles` for subsequent edits and deployments, as described in **Deploy or update** above.
+
+7. Restore the Borg passphrase from its separate secret copy:
 
    ```bash
    sudo install -d -m 700 -o root -g root /var/lib/borg-secrets
@@ -241,7 +256,7 @@ The repository does not declare OS disk partitioning. Before this procedure, pro
      /var/lib/borg-secrets/mini-immich.passphrase
    ```
 
-7. Confirm access to the existing repository:
+8. Confirm access to the existing repository:
 
    ```bash
    findmnt /mnt/backup
@@ -251,9 +266,9 @@ The repository does not declare OS disk partitioning. Before this procedure, pro
 
    Do not run `borg init` when recovering the existing repository.
 
-8. Recover Immich:
+9. Recover Immich:
 
    - If the `services` filesystem still contains `/srv/immich/media` and `/srv/postgresql`, start the system normally and verify Immich.
    - If the `services` filesystem is blank or replaced, restore the Borg archive through step 6 of the restore procedure. Open the Immich welcome screen, choose **Restore from backup**, select a dump from `/srv/immich/media/backups`, and complete onboarding.
 
-9. Verify the deployment and run one manual backup using the backup procedure above.
+10. Verify the deployment and run one manual backup using the backup procedure above.
