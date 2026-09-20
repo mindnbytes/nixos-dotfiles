@@ -1,5 +1,5 @@
 {
-  description = "NixOs and Home Manager dotfiles";
+  description = "NixOS and Home Manager dotfiles";
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-26.05";
@@ -13,7 +13,6 @@
 
   outputs =
     inputs@{
-      self,
       nixpkgs,
       home-manager,
       ...

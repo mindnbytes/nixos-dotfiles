@@ -1,7 +1,7 @@
 { ... }:
 
 {
-  # Make sure the directories exist with correct ownwership.
+  # Make sure the directories exist with correct ownership.
   systemd.tmpfiles.rules = [
     "d /srv/immich/media 0750 immich immich - -"
     "d /srv/postgresql 0700 postgres postgres - -"
@@ -20,7 +20,7 @@
     port = 2283;
     openFirewall = true;
 
-    # One the USB NVMe SSD
+    # On the USB NVMe SSD
     mediaLocation = "/srv/immich/media";
 
     # Keep enabled initially; it is local.

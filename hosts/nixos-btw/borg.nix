@@ -25,9 +25,7 @@ in
         "/home/alex/Projects"
         "/home/alex/nixos-dotfiles"
       ];
-      exclude = commonExclude ++ [
-        "/home/alex/Downloads"
-      ];
+      exclude = commonExclude;
       repo = "/mnt/backup/borg-mini-home";
       removableDevice = true;
       doInit = false;

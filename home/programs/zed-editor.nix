@@ -1,4 +1,9 @@
-{ config, pkgs, pkgsUnstable, ... }:
+{
+  config,
+  pkgs,
+  pkgsUnstable,
+  ...
+}:
 
 let
   nixdSettings = import ./nixd-settings.nix { inherit config pkgs; };
@@ -66,7 +71,7 @@ in
         };
       };
 
-      # Defuault provider but don't show unless triggered manually
+      # Default provider, but show predictions only when triggered manually.
       edit_predictions = {
         provider = "zed";
         mode = "subtle";
