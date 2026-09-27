@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, pkgsUnstable, ... }:
 
 let
   nixdSettings = import ./nixd-settings.nix { inherit config pkgs; };
@@ -37,6 +37,8 @@ in
       pkgs.golangci-lint-langserver
       # bash LS
       pkgs.bash-language-server
+      # toml
+      pkgsUnstable.tombi
     ];
 
     # Generates ~/.config/helix/config.toml
