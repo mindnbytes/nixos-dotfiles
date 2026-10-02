@@ -1,6 +1,6 @@
-# Nix completion in Helix and Zed
+# Nix completion in Helix
 
-Both editors share defaults from `home/programs/nixd-settings.nix`. Package completion uses the stable Nixpkgs input of `~/nixos-dotfiles`; NixOS options come from the mini configuration, and Home Manager options come from the current host's profile. The checkout path is absolute, so launching the editor elsewhere does not change these defaults.
+Helix uses defaults from `home/programs/nixd-settings.nix`. Package completion uses the stable Nixpkgs input of `~/nixos-dotfiles`; NixOS options come from the mini configuration, and Home Manager options come from the current host's profile. The checkout path is absolute, so launching the editor elsewhere does not change these defaults.
 
 These settings only affect editor assistance. A project's `nix develop` or build still uses its own inputs and lock file.
 
@@ -21,28 +21,6 @@ expr = '{}'
 expr = '{}'
 ```
 
-For Zed, create `.zed/settings.json`:
-
-```json
-{
-  "lsp": {
-    "nixd": {
-      "settings": {
-        "nixd": {
-          "nixpkgs": {
-            "expr": "import (builtins.getFlake \"/absolute/path/to/project\").inputs.nixpkgs { system = builtins.currentSystem; }"
-          },
-          "options": {
-            "nixos": { "expr": "{}" },
-            "home-manager": { "expr": "{}" }
-          }
-        }
-      }
-    }
-  }
-}
-```
-
 The empty option expressions avoid importing dotfiles-specific options into a development-shell project. For a project that defines NixOS or Home Manager configurations, replace them with expressions selecting that project's option sets. Restart the language server after changing these settings.
 
-Absolute paths may differ between machines; keep these overrides local when needed. See the [Helix language configuration](https://docs.helix-editor.com/languages.html) and [Zed language-server configuration](https://zed.dev/docs/configuring-languages) documentation.
+Absolute paths may differ between machines; keep these overrides local when needed. See the [Helix language configuration](https://docs.helix-editor.com/languages.html) documentation.

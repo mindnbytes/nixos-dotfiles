@@ -46,6 +46,7 @@ in
       theme = "tokyonight_storm";
 
       editor.file-picker.hidden = false;
+      editor.soft-wrap.enable = true;
       # Auto-save does not trigger formatting; use :write to format.
       editor.auto-save.after-delay.enable = true;
     };

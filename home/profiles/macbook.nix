@@ -13,7 +13,6 @@ in
     ../packages.nix
     ../packages-macbook.nix
     ../dotfiles.nix
-    ../programs/zed-editor.nix
   ];
 
   # profile specific
