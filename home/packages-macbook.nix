@@ -12,6 +12,7 @@ in
     pkgsUnstable.llama-cpp
     pkgs.ghostty-bin
     pkgs.git
+    pkgsUnstable.glab
 
     # Stable LLVM 22 toolchain
     llvm22.clang
