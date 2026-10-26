@@ -153,7 +153,8 @@ class BackupTests(unittest.TestCase):
                                 ({"LoadState": "not-found"}, "FAIL")):
             with self.subTest(changes=changes), patch.object(health, "backup_properties", return_value={**base, **changes}):
                 self.assertEqual(health.check_backup_run("mini-home").status, status)
-        with patch.object(health, "backup_properties", return_value={**base, "ExecMainExitTimestamp": ""}):
+        with patch.object(health, "backup_properties", return_value={**base, "ExecMainExitTimestamp": ""}), \
+             patch.object(health, "read_backup_history", side_effect=health.Unavailable("no history")):
             with self.assertRaises(health.Unavailable):
                 health.check_backup_run("mini-home")
 
@@ -167,7 +168,7 @@ class BackupTests(unittest.TestCase):
             {**common, "MESSAGE": "Time (end): Mon, 2026-10-26 03:00:38"},
             {"UNIT": common["_SYSTEMD_UNIT"], "_PID": "1", "INVOCATION_ID": invocation,
              "__REALTIME_TIMESTAMP": str(stamp),
-             "MESSAGE_ID": health.UNIT_SUCCESS if success else "unit-failed",
+             "MESSAGE_ID": health.UNIT_SUCCESS if success else next(iter(health.UNIT_FAILURES)),
              "MESSAGE": "Deactivated successfully." if success else "Failed with result 'exit-code'."},
         ]
 
@@ -213,6 +214,72 @@ class BackupTests(unittest.TestCase):
             result = health.check_backup_freshness("mini-home", 36, self.now)
             self.assertEqual(result.status, "PASS")
             self.assertIn("age 10.0h", result.detail)
+
+    def test_missing_runtime_record_uses_latest_journal_attempt(self):
+        state = dict(LoadState="loaded", ActiveState="inactive", Result="success",
+                     ExecMainStatus="0", ExecMainExitTimestamp="")
+        old = self.journal_run("2026-10-25T00:00:00+00:00", "old")
+        for success, expected in ((True, "PASS"), (False, "FAIL")):
+            entries = old + self.journal_run("2026-10-26T03:00:00+01:00", "recent", success=success)
+            with self.subTest(success=success), \
+                 patch.object(health, "backup_properties", return_value=state), \
+                 patch.object(health, "run", return_value=self.journal(list(reversed(entries)))):
+                result = health.check_backup_run("mini-home", now=self.now)
+                self.assertEqual(result.status, expected)
+                self.assertIn("(journal)", result.detail)
+
+    def test_later_failure_is_not_hidden_by_fresh_success_after_reboot(self):
+        entries = self.journal_run("2026-10-26T03:00:00+01:00", "good")
+        entries += self.journal_run("2026-10-26T10:00:00+01:00", "bad", success=False)
+        state = dict(LoadState="loaded", ActiveState="inactive", Result="success",
+                     ExecMainStatus="0", ExecMainExitTimestamp="")
+        with patch.object(health, "run", return_value=self.journal(entries)):
+            evidence = health.read_backup_history("mini-home")
+        with patch.object(health, "backup_properties", return_value=state):
+            self.assertEqual(health.check_backup_run("mini-home", history=lambda: evidence, now=self.now).status, "FAIL")
+            self.assertEqual(health.check_backup_freshness("mini-home", 36, self.now, history=lambda: evidence).status, "PASS")
+
+    def test_failure_before_borg_summary_or_invocation_is_still_a_failure(self):
+        for event in health.UNIT_FAILURES:
+            entry = self.journal_run(success=False)[-1]
+            entry["MESSAGE_ID"] = event
+            entry.pop("INVOCATION_ID")
+            with self.subTest(event=event), patch.object(health, "run", return_value=self.journal([entry])):
+                self.assertEqual(health.read_backup_history("mini-home")["latest_attempt"][1], "FAIL")
+
+    def test_latest_incomplete_success_does_not_fall_back_to_older_success(self):
+        entries = self.journal_run("2026-10-25T00:00:00+00:00", "old")
+        entries += self.journal_run("2026-10-26T03:00:00+01:00", "incomplete")[-1:]
+        state = dict(LoadState="loaded", ActiveState="inactive", Result="success",
+                     ExecMainStatus="0", ExecMainExitTimestamp="")
+        with patch.object(health, "backup_properties", return_value=state), \
+             patch.object(health, "run", return_value=self.journal(entries)):
+            with self.assertRaises(health.Unavailable):
+                health.check_backup_run("mini-home", now=self.now)
+
+    def test_current_failure_does_not_need_journal(self):
+        state = dict(LoadState="loaded", ActiveState="failed", Result="exit-code",
+                     ExecMainStatus="2", ExecMainExitTimestamp="")
+        with patch.object(health, "backup_properties", return_value=state), \
+             patch.object(health, "read_backup_history") as history:
+            self.assertEqual(health.check_backup_run("mini-home").status, "FAIL")
+            history.assert_not_called()
+
+    def test_history_is_read_once_per_job_even_when_unavailable(self):
+        state = dict(LoadState="loaded", ActiveState="inactive", Result="success",
+                     ExecMainStatus="0", ExecMainExitTimestamp="")
+        for unavailable in (False, True):
+            with self.subTest(unavailable=unavailable), \
+                 patch.object(health, "check_service"), patch.object(health, "check_immich"), \
+                 patch.object(health, "check_storage"), patch.object(health, "check_failed_units"), \
+                 patch.object(health, "check_backup_timer"), \
+                 patch.object(health, "backup_properties", return_value=state), \
+                 patch.object(health, "read_backup_history", return_value={
+                     "latest_attempt": (self.now.timestamp(), "PASS"),
+                     "latest_success": self.now.timestamp(), "lookback_hours": 168,
+                 }, side_effect=health.Unavailable("unreadable") if unavailable else None) as history:
+                health.collect(15)
+                self.assertEqual(history.call_count, 2)
 
     def test_similar_text_without_structured_success_does_not_count(self):
         entries = self.journal_run()

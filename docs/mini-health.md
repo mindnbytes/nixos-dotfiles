@@ -20,7 +20,8 @@ every missed hour. Each service invocation has an overall ten-minute timeout.
 
 The checker exits nonzero for any `WARN`, `FAIL`, or `UNKNOWN`; systemd records
 that invocation as failed, with the report in the journal. The timer continues
-to schedule subsequent checks. No notifications or automatic repairs are set up.
+to schedule subsequent checks. Optional Healthchecks reporting is described
+below; no automatic repairs are set up.
 
 For an immediate run with the service's exact environment and permissions:
 
@@ -37,6 +38,74 @@ Deploy the module using the normal procedure from the mini's checkout:
 ```sh
 sudo nixos-rebuild switch --flake .#nixos-btw
 ```
+
+## Optional Healthchecks heartbeat and email
+
+The scheduled service runs a reporting wrapper around the checker. It sends an
+empty HTTPS POST only when **all checks pass**. It never sends failure signals,
+logs, check names, or other diagnostic content. Manual `mini-health` runs do not
+send anything. The provider can observe the request time and public source IP.
+No incoming connection or router port forwarding is needed.
+
+### Configure the hosted check
+
+On Healthchecks.io, create one check with a generic name such as `Home server`:
+
+1. Choose a simple schedule with a **one-hour period** and **one-hour grace**.
+2. Enable email notifications for the down and recovery transitions. Disable
+   repeated reminders and periodic reports if you want only those messages.
+3. Keep the UUID success-ping URL private. Use the normal
+   `https://hc-ping.com/UUID` URL, without `/fail`, `/start`, or query parameters.
+
+Healthy hourly runs keep it quiet. Unhealthy runs send nothing. About two hours
+without a success signal triggers an email; a later passing run sends the
+heartbeat and triggers recovery. An isolated unhealthy run may produce no email
+if the next run succeeds in time. Power loss, network trouble, and a stopped
+checker all appear as missing heartbeats.
+
+### Install the credential on the mini
+
+After rebuilding, the module provides `/var/lib/mini-health` as a root-only
+directory. For **initial setup only**, create a root-only file, then edit it to
+contain the success-ping URL on one line:
+
+```sh
+sudo install -m 600 -o root -g root /dev/null /var/lib/mini-health/healthchecks-url
+sudoedit /var/lib/mini-health/healthchecks-url
+```
+
+Do not run the `install` command over an existing credential: it empties the
+file. For later changes, use `sudoedit` only. Do not put the URL in Git, a Nix
+string, a command argument, shell history, or a pasted journal report.
+
+Systemd reads that file as root and delivers it to the Alex-owned service using
+`LoadCredential`. Its contents are outside the Nix store and the generated unit.
+A non-secret `disabled` default in `SetCredential` lets local checks continue when the
+source file is absent or cannot be loaded; the journal then says reporting is
+not configured. An unreadable runtime credential or an invalid URL fails the
+reporting invocation without disclosing the value. No rebuild is needed to
+change the URL: credentials are loaded on each service start.
+
+The reporter accepts the hosted UUID URL only, disables redirects and ambient
+HTTP proxies, and makes at most two attempts with a five-second socket timeout
+and a one-second pause. TLS uses the packaged CA certificates. Delivery failure
+is logged without the URL and makes the service fail; subsequent hourly runs
+still execute. Continued missing heartbeats are detected by Healthchecks.
+
+### Verify
+
+```sh
+sudo systemctl start mini-health.service
+journalctl -u mini-health.service -n 50 --no-pager
+```
+
+Confirm both the local report and `Healthchecks heartbeat sent.`, then confirm
+receipt in the hosted dashboard. Verify problem/recovery email delivery using
+a separate temporary hosted check with short timings. Pause the hosted check
+before deliberately disabling reporting for maintenance.
+
+No local notification state, counters, mail server, or detailed remote report
+is required. Future checks automatically affect whether the heartbeat is sent.
 
 ## Run from source
 
@@ -131,9 +200,16 @@ success does not hide a disabled timer or a failed latest job. A running job is
 malformed records, or a success timestamp more than five minutes in the future
 produce `UNKNOWN`. A qualifying success older than the limit produces `WARN`.
 
-Systemd may have no previous run recorded after a reboot, in which case the
-run-result check is `UNKNOWN`; retained journal evidence can still establish
-freshness. Freshness means a backup job completed successfully recently; it
+If systemd has no completed-run record, for example after reboot, the run-result
+check uses the latest completed attempt in the retained journal. A structured
+failure event counts even if Borg failed before writing an archive summary.
+An older success never hides a newer failure. Current systemd failure or
+running state takes precedence; no reboot grace period is needed. Missing or
+incomplete journal evidence remains `UNKNOWN`. Run result and freshness share
+one journal read per job.
+
+Freshness still uses the latest qualifying success, independently of the
+latest attempt's outcome. It means a backup job completed successfully recently; it
 does not inspect whether the archive is still on disk, its contents, or
 database-dump freshness.
 
@@ -150,8 +226,7 @@ unit can reflect a past failure and needs investigation; it does not always
 mean the application is currently unavailable. Filesystem checks are snapshots,
 not disk integrity tests.
 
-Archive contents, kernel/OOM history, SMART, and
-notifications are later steps. A passing report does not establish backup
+Archive contents, kernel/OOM history, and SMART are later steps. A passing report does not establish backup
 recoverability or detect a server that is powered off.
 
 ## Local verification
@@ -168,3 +243,9 @@ missing commands, timeouts, and continuing after an unavailable check.
 Backup tests cover disabled timers, unsuccessful and running jobs, fresh/stale
 success events, the exact age threshold, invocation matching, later failed runs,
 missing summaries, malformed/future timestamps, and unavailable journal access.
+They also cover journal fallback when runtime records are missing, failures
+before an archive summary, and one shared journal read per job.
+Reporter tests cover success-only gating, disabled/empty/missing/invalid credentials,
+secret redaction, delivery failure, retries, empty HTTP bodies, and redirect
+rejection. HTTP contract tests use a loopback server and never contact the
+hosted service.

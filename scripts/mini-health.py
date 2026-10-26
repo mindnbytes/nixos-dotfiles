@@ -20,6 +20,7 @@ FILESYSTEMS = (("/", None), ("/srv", "services"), ("/mnt/backup", "backup-hdd"))
 BACKUP_JOBS = ("mini-home", "mini-immich")
 # systemd's structured UNIT_SUCCESS event, verified against the mini's journal.
 UNIT_SUCCESS = "7ad2d189f7e94e70a38c781354912448"
+UNIT_FAILURES = {"d9b373ed55a64feb8242e02dbe79a49c", "be02cf6855d2428ba40df7e9d022f03d"}
 
 
 class Unavailable(Exception):
@@ -154,7 +155,7 @@ def check_backup_timer(job):
     return Result("PASS" if healthy else "FAIL", f"backup/{job}/timer", detail)
 
 
-def check_backup_run(job):
+def check_backup_run(job, history=None, now=None):
     state = backup_properties(f"borgbackup-job-{job}.service", (
         "LoadState", "ActiveState", "Result", "ExecMainStatus", "ExecMainExitTimestamp",
     ))
@@ -166,11 +167,22 @@ def check_backup_run(job):
     if state["ActiveState"] == "failed" or state["Result"] != "success" or state["ExecMainStatus"] != "0":
         return Result("FAIL", name, f"last run: {state['Result']}, exit {state['ExecMainStatus']}")
     if not state["ExecMainExitTimestamp"]:
-        raise Unavailable("no completed run recorded by systemd (for example, since reboot)")
+        evidence = history() if history else read_backup_history(job)
+        latest = evidence["latest_attempt"]
+        if latest is None:
+            raise Unavailable("no completed backup attempt in the readable journal")
+        timestamp, status = latest
+        completed = datetime.fromtimestamp(timestamp, timezone.utc)
+        if (completed - (now or datetime.now(timezone.utc))).total_seconds() > 300:
+            raise Unavailable("latest backup attempt is in the future; check the system clock")
+        if status == "UNKNOWN":
+            raise Unavailable("latest completed journal attempt has no matching Borg summary")
+        outcome = "succeeded" if status == "PASS" else "failed"
+        return Result(status, name, f"last completed attempt {outcome}: {completed.isoformat()} (journal)")
     return Result("PASS", name, f"last run succeeded: {state['ExecMainExitTimestamp']}")
 
 
-def check_backup_freshness(job, max_age_hours, now=None):
+def read_backup_history(job, max_age_hours=36):
     unit = f"borgbackup-job-{job}.service"
     lookback_hours = max(168, max_age_hours + 24)
     output = run([
@@ -186,6 +198,7 @@ def check_backup_freshness(job, max_age_hours, now=None):
             timestamp = int(entry["__REALTIME_TIMESTAMP"]) / 1_000_000
             if not math.isfinite(timestamp) or timestamp <= 0:
                 raise ValueError("invalid journal timestamp")
+            datetime.fromtimestamp(timestamp, timezone.utc)
             message = entry.get("MESSAGE", "")
             invocation = entry.get("_SYSTEMD_INVOCATION_ID")
             if invocation and entry.get("_SYSTEMD_UNIT") == unit and isinstance(message, str):
@@ -197,18 +210,37 @@ def check_backup_freshness(job, max_age_hours, now=None):
                     summary["end_time"] = timestamp
             # PID 1 logs use INVOCATION_ID, whereas Borg's own log records use
             # _SYSTEMD_INVOCATION_ID. Never pair messages from different runs.
-            if (entry.get("MESSAGE_ID") == UNIT_SUCCESS and entry.get("_PID") == "1"
-                    and entry.get("UNIT") == unit and entry.get("INVOCATION_ID")):
-                completions.append((timestamp, entry["INVOCATION_ID"]))
-        matching = [timestamp for timestamp, invocation in completions
-                    if {"archive", "archive_time", "end_time"} <= summaries.get(invocation, {}).keys()
-                    and max(summaries[invocation]["archive_time"],
-                            summaries[invocation]["end_time"]) <= timestamp]
-        if not matching:
-            raise Unavailable(f"no successful backup with a Borg summary in the last {lookback_hours:g}h of readable journal")
-        completed = datetime.fromtimestamp(max(matching), timezone.utc)
+            event = entry.get("MESSAGE_ID")
+            if (entry.get("_PID") == "1" and entry.get("UNIT") == unit
+                    and (event == UNIT_SUCCESS or event in UNIT_FAILURES)):
+                completions.append((timestamp, entry.get("INVOCATION_ID"), event))
+        attempts, successes = [], []
+        for timestamp, invocation, event in completions:
+            summary = summaries.get(invocation, {})
+            qualified = ({"archive", "archive_time", "end_time"} <= summary.keys()
+                         and max(summary["archive_time"], summary["end_time"]) <= timestamp)
+            if event in UNIT_FAILURES:
+                status = "FAIL"
+            elif qualified:
+                status = "PASS"
+                successes.append(timestamp)
+            else:
+                status = "UNKNOWN"
+            attempts.append((timestamp, status))
+        return {
+            "latest_attempt": max(attempts, key=lambda attempt: (attempt[0], attempt[1] == "FAIL"), default=None),
+            "latest_success": max(successes, default=None),
+            "lookback_hours": lookback_hours,
+        }
     except (ValueError, KeyError, TypeError, AttributeError, OverflowError, OSError) as error:
         raise Unavailable(f"cannot interpret backup journal: {error}") from error
+
+
+def check_backup_freshness(job, max_age_hours, now=None, history=None):
+    evidence = history() if history else read_backup_history(job, max_age_hours)
+    if evidence["latest_success"] is None:
+        raise Unavailable(f"no successful backup with a Borg summary in the last {evidence['lookback_hours']:g}h of readable journal")
+    completed = datetime.fromtimestamp(evidence["latest_success"], timezone.utc)
     age_hours = ((now or datetime.now(timezone.utc)) - completed).total_seconds() / 3600
     if age_hours < -5 / 60:
         raise Unavailable("successful backup timestamp is in the future; check the system clock")
@@ -218,6 +250,19 @@ def check_backup_freshness(job, max_age_hours, now=None):
 
 
 def collect(min_free_percent, max_backup_age_hours=36):
+    histories = {}
+
+    def history(job):
+        # Share evidence, including read failures, between the two checks.
+        if job not in histories:
+            try:
+                histories[job] = read_backup_history(job, max_backup_age_hours)
+            except Unavailable as error:
+                histories[job] = error
+        if isinstance(histories[job], Unavailable):
+            raise histories[job]
+        return histories[job]
+
     checks = [(f"service/{name}", lambda name=name: check_service(name)) for name in SERVICES]
     checks.append(("http/immich", check_immich))
     checks.extend((f"storage/{path}", lambda path=path, label=label:
@@ -226,9 +271,9 @@ def collect(min_free_percent, max_backup_age_hours=36):
     for job in BACKUP_JOBS:
         checks.extend([
             (f"backup/{job}/timer", lambda job=job: check_backup_timer(job)),
-            (f"backup/{job}/run", lambda job=job: check_backup_run(job)),
+            (f"backup/{job}/run", lambda job=job: check_backup_run(job, history=lambda: history(job))),
             (f"backup/{job}/freshness", lambda job=job:
-             check_backup_freshness(job, max_backup_age_hours)),
+             check_backup_freshness(job, max_backup_age_hours, history=lambda: history(job))),
         ])
     results = []
     for name, check in checks:

@@ -14,9 +14,18 @@ let
       exec python3 ${../../scripts/mini-health.py} "$@"
     '';
   };
+  reporter = pkgs.writeShellApplication {
+    name = "mini-health-report";
+    runtimeInputs = [ pkgs.python3 ];
+    text = ''
+      export SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt
+      exec python3 ${../../scripts/mini-health-report.py} ${checker}/bin/mini-health
+    '';
+  };
 in
 {
   environment.systemPackages = [ checker ];
+  systemd.tmpfiles.rules = [ "d /var/lib/mini-health 0700 root root - -" ];
 
   systemd.services.mini-health = {
     description = "Check mini server health";
@@ -27,7 +36,11 @@ in
       Type = "oneshot";
       User = "alex";
       SupplementaryGroups = [ "systemd-journal" ];
-      ExecStart = "${checker}/bin/mini-health";
+      ExecStart = "${reporter}/bin/mini-health-report";
+      LoadCredential = [ "healthchecks-url:/var/lib/mini-health/healthchecks-url" ];
+      # A non-secret default keeps local checks working before setup.
+      # A configured LoadCredential value takes precedence over this default.
+      SetCredential = [ "healthchecks-url:disabled" ];
       TimeoutStartSec = "10min";
       NoNewPrivileges = true;
       StandardOutput = "journal";
