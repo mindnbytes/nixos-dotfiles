@@ -1,6 +1,6 @@
 # Manual mini server health check
 
-Run `scripts/mini-health.py` **on the Linux mini**. This first version checks:
+Run `scripts/mini-health.py` **on the Linux mini**. It checks:
 
 - Running SSH, PostgreSQL, Redis, Immich server and machine learning, Caddy,
   Beszel hub, and Beszel agent services.
@@ -8,11 +8,15 @@ Run `scripts/mini-health.py` **on the Linux mini**. This first version checks:
 - Writable ext4 filesystems at `/`, `/srv`, and `/mnt/backup`, with the expected
   disk labels for the latter two and at least 15% available space on each.
 - Failed systemd units, including failed backup or maintenance units.
+- For both Borg jobs: an enabled, active timer with a next run; the result of
+  the last job invocation; and the age of the latest successful backup recorded
+  in the journal with a Borg archive summary.
 
-The script queries state without restarting services, writing data, or running
-backups. Accessing `/mnt/backup` triggers its configured automount and may wake
-the disk. That check allows 70 seconds for the configured 60-second device wait;
-other commands time out after 10 seconds, and HTTP after 8 seconds. Checks run
+The script queries state without restarting services or running backups. It
+does not invoke Borg or sudo. Accessing `/mnt/backup` triggers its configured
+automount and may wake the disk. That check allows 70 seconds for the configured
+60-second device wait; other commands time out after 10 seconds, and HTTP after
+8 seconds. Checks run
 sequentially and continue when a command fails or times out.
 
 ## Run
@@ -24,27 +28,32 @@ cd /home/alex/nixos-dotfiles
 python3 scripts/mini-health.py
 python3 scripts/mini-health.py --json
 python3 scripts/mini-health.py --min-free-percent 20
+python3 scripts/mini-health.py --max-backup-age-hours 48
 ```
 
-Dependencies: Python 3.9 or newer, `systemctl`, `curl`, `findmnt`, and GNU
-`stat`/`readlink`. No third-party Python packages or root privileges are required.
+Dependencies: Python 3.9 or newer, `systemctl`, `journalctl`, `curl`, `findmnt`,
+and GNU `stat`/`readlink`. No third-party Python packages or root privileges are
+required. Alex can read both jobs' journals on the mini. If journal access is
+unavailable, freshness reports `UNKNOWN` and the other checks still run.
+
 If Python or curl is missing, use the repository's pinned packages for a
 temporary environment (this may download packages):
 
 ```sh
-nix shell --inputs-from . nixpkgs#python3 nixpkgs#curl --command python3 scripts/mini-health.py
+nix shell --no-write-lock-file --inputs-from . nixpkgs#python3 nixpkgs#curl --command python3 scripts/mini-health.py
 ```
 
 For a check from the MacBook, after the script is present in the mini's checkout:
 
 ```sh
-ssh mini 'cd /home/alex/nixos-dotfiles && python3 scripts/mini-health.py'
+ssh mini 'cd /home/alex/nixos-dotfiles && nix shell --no-write-lock-file --inputs-from . nixpkgs#python3 nixpkgs#curl --command python3 scripts/mini-health.py'
 ```
 
 ## Interpret results
 
 - `PASS`: the check obtained the expected evidence.
-- `WARN`: available disk space is below the configured threshold.
+- `WARN`: disk space is low, the latest successful backup is stale, or a backup
+  is still running.
 - `FAIL`: observed state differs from the expected state.
 - `UNKNOWN`: the check could not obtain evidence, for example because a command
   is missing, a disk access timed out, or permissions prevented inspection.
@@ -60,6 +69,36 @@ For service failures, use `systemctl status UNIT` and
 
 ## Scope and limits
 
+### Backup freshness
+
+The daily schedules are `15:00` for `mini-home` and `03:00` for `mini-immich`,
+in the mini's local timezone. The default freshness limit is **36 hours**.
+`journalctl` supplies JSON entries from the last seven days, with a longer
+lookback of the configured limit plus 24 hours when needed. There is no fixed
+line limit, and records from previous boots are included when retained.
+
+A qualifying run needs a Borg `Archive name:` matching the job, a `Time (end):`
+summary line, and systemd's structured successful-deactivation event from PID 1.
+Both sides must identify the same service invocation, and the summary must
+precede completion. The freshness timestamp comes from the journal's precise
+completion timestamp, so no local date strings need parsing. The `.failed`
+suffix printed during creation is temporary: the NixOS wrapper removes it
+after successful creation. The suffix alone does not determine the result.
+
+Timer, last-run result, and freshness are separate report lines. A recent
+success does not hide a disabled timer or a failed latest job. A running job is
+`WARN` until it completes. Missing readable success evidence, incomplete or
+malformed records, or a success timestamp more than five minutes in the future
+produce `UNKNOWN`. A qualifying success older than the limit produces `WARN`.
+
+Systemd may have no previous run recorded after a reboot, in which case the
+run-result check is `UNKNOWN`; retained journal evidence can still establish
+freshness. Freshness means a backup job completed successfully recently; it
+does not inspect whether the archive is still on disk, its contents, or
+database-dump freshness.
+
+### Other checks
+
 The HTTP probe connects to loopback with the `immich.home.arpa` Host header, so
 it tests Caddy routing and the Immich ping endpoint. It does not test client
 DNS, LAN access, login, media retrieval, database queries, or ML inference.
@@ -71,7 +110,7 @@ unit can reflect a past failure and needs investigation; it does not always
 mean the application is currently unavailable. Filesystem checks are snapshots,
 not disk integrity tests.
 
-Backup freshness, archive contents, kernel/OOM history, SMART, scheduling, and
+Archive contents, kernel/OOM history, SMART, health-check scheduling, and
 notifications are later steps. A passing report does not establish backup
 recoverability or detect a server that is powered off.
 
@@ -86,3 +125,6 @@ python3 -m unittest discover -s tests -v
 They cover inactive/missing services, HTTP failures and unexpected responses,
 wrong or missing mounts, automount handling, low space, read-only filesystems,
 missing commands, timeouts, and continuing after an unavailable check.
+Backup tests cover disabled timers, unsuccessful and running jobs, fresh/stale
+success events, the exact age threshold, invocation matching, later failed runs,
+missing summaries, malformed/future timestamps, and unavailable journal access.

@@ -2,6 +2,7 @@
 
 import importlib.util
 import io
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 import subprocess
@@ -96,11 +97,15 @@ class HealthTests(unittest.TestCase):
         with patch.object(health, "check_service", side_effect=health.Unavailable("timed out")), \
              patch.object(health, "check_immich", return_value=health.Result("PASS", "http/immich", "pong")), \
              patch.object(health, "check_storage", side_effect=health.Unavailable("missing tool")), \
-             patch.object(health, "check_failed_units", return_value=health.Result("PASS", "os/failed-units", "none")):
+             patch.object(health, "check_failed_units", return_value=health.Result("PASS", "os/failed-units", "none")), \
+             patch.object(health, "check_backup_timer", side_effect=health.Unavailable("missing timer")), \
+             patch.object(health, "check_backup_run", side_effect=health.Unavailable("missing service")), \
+             patch.object(health, "check_backup_freshness", side_effect=health.Unavailable("permission denied")):
             results = health.collect(15)
-        self.assertEqual(len(results), 13)
+        self.assertEqual(len(results), 19)
         self.assertEqual(results[0].status, "UNKNOWN")
-        self.assertEqual(results[-1].status, "PASS")
+        self.assertEqual(results[12].status, "PASS")
+        self.assertEqual(results[-1].status, "UNKNOWN")
 
     def test_json_report_and_exit_status(self):
         for status, exit_code in (("PASS", 0), ("WARN", 1), ("FAIL", 1), ("UNKNOWN", 1)):
@@ -123,6 +128,124 @@ class HealthTests(unittest.TestCase):
                 health.main()
             self.assertEqual(error.exception.code, 2)
             collect.assert_not_called()
+
+
+class BackupTests(unittest.TestCase):
+    now = datetime(2026, 10, 26, 12, tzinfo=timezone.utc)
+
+    def test_timer_must_be_enabled_active_and_scheduled(self):
+        base = dict(LoadState="loaded", ActiveState="active", UnitFileState="enabled",
+                    NextElapseUSecRealtime="Mon 2026-10-26 15:00:00 CET")
+        for changes, status in (({}, "PASS"), ({"LoadState": "not-found"}, "FAIL"),
+                                ({"ActiveState": "inactive"}, "FAIL"),
+                                ({"UnitFileState": "disabled"}, "FAIL"),
+                                ({"NextElapseUSecRealtime": ""}, "FAIL"),
+                                ({"NextElapseUSecRealtime": "n/a"}, "FAIL")):
+            with self.subTest(changes=changes), patch.object(health, "backup_properties", return_value={**base, **changes}):
+                self.assertEqual(health.check_backup_timer("mini-home").status, status)
+
+    def test_completed_failed_running_and_unrecorded_runs(self):
+        base = dict(LoadState="loaded", ActiveState="inactive", Result="success",
+                    ExecMainStatus="0", ExecMainExitTimestamp="Mon 2026-10-26 03:00:46 CET")
+        for changes, status in (({}, "PASS"), ({"Result": "exit-code", "ExecMainStatus": "2"}, "FAIL"),
+                                ({"ExecMainStatus": "1"}, "FAIL"),
+                                ({"ActiveState": "activating"}, "WARN"),
+                                ({"LoadState": "not-found"}, "FAIL")):
+            with self.subTest(changes=changes), patch.object(health, "backup_properties", return_value={**base, **changes}):
+                self.assertEqual(health.check_backup_run("mini-home").status, status)
+        with patch.object(health, "backup_properties", return_value={**base, "ExecMainExitTimestamp": ""}):
+            with self.assertRaises(health.Unavailable):
+                health.check_backup_run("mini-home")
+
+    def journal_run(self, completed="2026-10-26T03:00:46+01:00", invocation="run-1",
+                    job="mini-home", success=True):
+        stamp = int(datetime.fromisoformat(completed).timestamp() * 1_000_000)
+        common = {"_SYSTEMD_UNIT": f"borgbackup-job-{job}.service",
+                  "_SYSTEMD_INVOCATION_ID": invocation, "__REALTIME_TIMESTAMP": str(stamp - 1_000_000)}
+        return [
+            {**common, "MESSAGE": f"Archive name: {job}-2026-10-26.failed"},
+            {**common, "MESSAGE": "Time (end): Mon, 2026-10-26 03:00:38"},
+            {"UNIT": common["_SYSTEMD_UNIT"], "_PID": "1", "INVOCATION_ID": invocation,
+             "__REALTIME_TIMESTAMP": str(stamp),
+             "MESSAGE_ID": health.UNIT_SUCCESS if success else "unit-failed",
+             "MESSAGE": "Deactivated successfully." if success else "Failed with result 'exit-code'."},
+        ]
+
+    def journal(self, entries=None):
+        if entries is None:
+            entries = self.journal_run()
+        return response("\n".join(json.dumps(entry) for entry in entries))
+
+    def test_fresh_stale_and_exact_boundary(self):
+        for completed, status in (("2026-10-26T03:00:00+01:00", "PASS"),
+                              ("2026-10-25T00:00:00+00:00", "PASS"),
+                              ("2026-10-24T23:59:59+00:00", "WARN")):
+            with self.subTest(completed=completed), patch.object(health, "run", return_value=self.journal(self.journal_run(completed))):
+                result = health.check_backup_freshness("mini-home", 36, self.now)
+                self.assertEqual(result.status, status)
+
+    def test_custom_age_limit(self):
+        with patch.object(health, "run", return_value=self.journal()):
+            self.assertEqual(health.check_backup_freshness("mini-home", 8, self.now).status, "WARN")
+
+    def test_missing_failed_incomplete_future_or_malformed_evidence_is_unknown(self):
+        entries = self.journal_run()
+        wrong_invocation = self.journal_run()
+        wrong_invocation[-1]["INVOCATION_ID"] = "another-run"
+        checkpoint = self.journal_run()
+        checkpoint[0]["MESSAGE"] += ".checkpoint"
+        for output in (self.journal([]), self.journal(entries[:-1]), self.journal(entries[1:]),
+                       self.journal(wrong_invocation), self.journal(checkpoint),
+                       self.journal(self.journal_run(success=False)),
+                       self.journal(self.journal_run(job="mini-immich")),
+                       self.journal(self.journal_run(completed="2026-10-27T03:00:00+01:00")),
+                       response("not JSON"), response('{}'), response('[]')):
+            with self.subTest(output=output.stdout), patch.object(health, "run", return_value=output):
+                with self.assertRaises(health.Unavailable):
+                    health.check_backup_freshness("mini-home", 36, self.now)
+
+    def test_latest_success_survives_a_later_failure(self):
+        entries = self.journal_run("2026-10-24T23:00:00+00:00", "old")
+        entries += self.journal_run("2026-10-26T03:00:00+01:00", "recent")
+        entries += self.journal_run("2026-10-26T10:00:00+01:00", "failed", success=False)
+        # Newest successful completion wins, regardless of input ordering.
+        with patch.object(health, "run", return_value=self.journal(list(reversed(entries)))):
+            result = health.check_backup_freshness("mini-home", 36, self.now)
+            self.assertEqual(result.status, "PASS")
+            self.assertIn("age 10.0h", result.detail)
+
+    def test_similar_text_without_structured_success_does_not_count(self):
+        entries = self.journal_run()
+        entries[-1].pop("MESSAGE_ID")
+        with patch.object(health, "run", return_value=self.journal(entries)):
+            with self.assertRaises(health.Unavailable):
+                health.check_backup_freshness("mini-home", 36, self.now)
+
+    def test_inaccessible_journal_is_unknown(self):
+        with patch.object(health, "run", side_effect=health.Unavailable("Permission denied")):
+            with self.assertRaises(health.Unavailable):
+                health.check_backup_freshness("mini-home", 36, self.now)
+
+    def test_uses_time_window_without_sudo_or_line_limit(self):
+        with patch.object(health, "run", return_value=self.journal()) as run:
+            health.check_backup_freshness("mini-home", 36, self.now)
+        command = run.call_args.args[0]
+        self.assertEqual(command[0], "journalctl")
+        self.assertIn("168 hours ago", command)
+        self.assertIn("--output=json", command)
+        self.assertNotIn("sudo", command)
+        self.assertNotIn("-n", command)
+        self.assertNotIn("--lines", command)
+
+    def test_lookback_expands_for_custom_threshold(self):
+        with patch.object(health, "run", return_value=self.journal()) as run:
+            health.check_backup_freshness("mini-home", 240, self.now)
+        self.assertIn("264 hours ago", run.call_args.args[0])
+
+    def test_backup_unit_fields_are_required(self):
+        with patch.object(health, "run", return_value=response("LoadState=loaded\n")):
+            with self.assertRaises(health.Unavailable):
+                health.check_backup_timer("mini-home")
 
 
 if __name__ == "__main__":

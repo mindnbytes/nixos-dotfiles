@@ -17,6 +17,9 @@ SERVICES = (
     "immich-machine-learning", "caddy", "beszel-hub", "beszel-agent",
 )
 FILESYSTEMS = (("/", None), ("/srv", "services"), ("/mnt/backup", "backup-hdd"))
+BACKUP_JOBS = ("mini-home", "mini-immich")
+# systemd's structured UNIT_SUCCESS event, verified against the mini's journal.
+UNIT_SUCCESS = "7ad2d189f7e94e70a38c781354912448"
 
 
 class Unavailable(Exception):
@@ -34,7 +37,7 @@ def run(command, timeout=10, allowed=(0,)):
     try:
         result = subprocess.run(
             command, capture_output=True, text=True, timeout=timeout,
-            env={**os.environ, "LC_ALL": "C"},
+            stdin=subprocess.DEVNULL, env={**os.environ, "LC_ALL": "C.UTF-8"},
         )
     except (OSError, subprocess.TimeoutExpired) as error:
         raise Unavailable(f"{command[0]}: {error}") from error
@@ -129,12 +132,104 @@ def check_failed_units():
                   ", ".join(units) if units else "no failed systemd units")
 
 
-def collect(min_free_percent):
+def backup_properties(unit, names):
+    output = run([
+        "systemctl", "show", unit, "--no-pager", "--property=" + ",".join(names),
+    ]).stdout
+    properties = dict(line.split("=", 1) for line in output.splitlines() if "=" in line)
+    if not all(name in properties for name in names):
+        raise Unavailable("systemctl returned incomplete backup state")
+    return properties
+
+
+def check_backup_timer(job):
+    state = backup_properties(f"borgbackup-job-{job}.timer", (
+        "LoadState", "ActiveState", "UnitFileState", "NextElapseUSecRealtime",
+    ))
+    healthy = (state["LoadState"] == "loaded" and state["ActiveState"] == "active"
+               and state["UnitFileState"] == "enabled"
+               and state["NextElapseUSecRealtime"] not in ("", "n/a"))
+    detail = (f"{state['LoadState']}, {state['ActiveState']}, {state['UnitFileState']}; "
+              f"next: {state['NextElapseUSecRealtime'] or 'not scheduled'}")
+    return Result("PASS" if healthy else "FAIL", f"backup/{job}/timer", detail)
+
+
+def check_backup_run(job):
+    state = backup_properties(f"borgbackup-job-{job}.service", (
+        "LoadState", "ActiveState", "Result", "ExecMainStatus", "ExecMainExitTimestamp",
+    ))
+    name = f"backup/{job}/run"
+    if state["LoadState"] != "loaded":
+        return Result("FAIL", name, f"service {state['LoadState']}")
+    if state["ActiveState"] in ("activating", "active", "deactivating"):
+        return Result("WARN", name, "backup is in progress; current run has not completed")
+    if state["ActiveState"] == "failed" or state["Result"] != "success" or state["ExecMainStatus"] != "0":
+        return Result("FAIL", name, f"last run: {state['Result']}, exit {state['ExecMainStatus']}")
+    if not state["ExecMainExitTimestamp"]:
+        raise Unavailable("no completed run recorded by systemd (for example, since reboot)")
+    return Result("PASS", name, f"last run succeeded: {state['ExecMainExitTimestamp']}")
+
+
+def check_backup_freshness(job, max_age_hours, now=None):
+    unit = f"borgbackup-job-{job}.service"
+    lookback_hours = max(168, max_age_hours + 24)
+    output = run([
+        "journalctl", "--unit", unit, "--since", f"{lookback_hours:.0f} hours ago",
+        "--output=json", "--no-pager", "--quiet",
+    ]).stdout
+    summaries, completions = {}, []
+    try:
+        for line in output.splitlines():
+            if not line.strip():
+                continue
+            entry = json.loads(line)
+            timestamp = int(entry["__REALTIME_TIMESTAMP"]) / 1_000_000
+            if not math.isfinite(timestamp) or timestamp <= 0:
+                raise ValueError("invalid journal timestamp")
+            message = entry.get("MESSAGE", "")
+            invocation = entry.get("_SYSTEMD_INVOCATION_ID")
+            if invocation and entry.get("_SYSTEMD_UNIT") == unit and isinstance(message, str):
+                summary = summaries.setdefault(invocation, {})
+                if message.startswith(f"Archive name: {job}-") and ".checkpoint" not in message:
+                    summary["archive"] = message.removeprefix("Archive name: ").strip()
+                    summary["archive_time"] = timestamp
+                if message.startswith("Time (end):"):
+                    summary["end_time"] = timestamp
+            # PID 1 logs use INVOCATION_ID, whereas Borg's own log records use
+            # _SYSTEMD_INVOCATION_ID. Never pair messages from different runs.
+            if (entry.get("MESSAGE_ID") == UNIT_SUCCESS and entry.get("_PID") == "1"
+                    and entry.get("UNIT") == unit and entry.get("INVOCATION_ID")):
+                completions.append((timestamp, entry["INVOCATION_ID"]))
+        matching = [timestamp for timestamp, invocation in completions
+                    if {"archive", "archive_time", "end_time"} <= summaries.get(invocation, {}).keys()
+                    and max(summaries[invocation]["archive_time"],
+                            summaries[invocation]["end_time"]) <= timestamp]
+        if not matching:
+            raise Unavailable(f"no successful backup with a Borg summary in the last {lookback_hours:g}h of readable journal")
+        completed = datetime.fromtimestamp(max(matching), timezone.utc)
+    except (ValueError, KeyError, TypeError, AttributeError, OverflowError, OSError) as error:
+        raise Unavailable(f"cannot interpret backup journal: {error}") from error
+    age_hours = ((now or datetime.now(timezone.utc)) - completed).total_seconds() / 3600
+    if age_hours < -5 / 60:
+        raise Unavailable("successful backup timestamp is in the future; check the system clock")
+    status = "PASS" if age_hours <= max_age_hours else "WARN"
+    return Result(status, f"backup/{job}/freshness",
+                  f"successful backup completed {completed.isoformat()}; age {max(0, age_hours):.1f}h; limit {max_age_hours:g}h (journal)")
+
+
+def collect(min_free_percent, max_backup_age_hours=36):
     checks = [(f"service/{name}", lambda name=name: check_service(name)) for name in SERVICES]
     checks.append(("http/immich", check_immich))
     checks.extend((f"storage/{path}", lambda path=path, label=label:
                    check_storage(path, label, min_free_percent)) for path, label in FILESYSTEMS)
     checks.append(("os/failed-units", check_failed_units))
+    for job in BACKUP_JOBS:
+        checks.extend([
+            (f"backup/{job}/timer", lambda job=job: check_backup_timer(job)),
+            (f"backup/{job}/run", lambda job=job: check_backup_run(job)),
+            (f"backup/{job}/freshness", lambda job=job:
+             check_backup_freshness(job, max_backup_age_hours)),
+        ])
     results = []
     for name, check in checks:
         try:
@@ -151,15 +246,24 @@ def percentage(value):
     return number
 
 
+def positive_hours(value):
+    number = float(value)
+    if not math.isfinite(number) or number <= 0:
+        raise argparse.ArgumentTypeError("must be a finite number greater than 0")
+    return number
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="print a structured report")
     parser.add_argument("--min-free-percent", type=percentage, default=15,
                         help="warn below this available-space percentage (default: 15)")
+    parser.add_argument("--max-backup-age-hours", type=positive_hours, default=36,
+                        help="warn when the latest successful backup is older than this (default: 36)")
     args = parser.parse_args()
     if platform.system() != "Linux":
         parser.exit(2, "mini-health must run on the Linux mini, not the MacBook.\n")
-    results = collect(args.min_free_percent)
+    results = collect(args.min_free_percent, args.max_backup_age_hours)
     healthy = all(result.status == "PASS" for result in results)
     if args.json:
         print(json.dumps({
