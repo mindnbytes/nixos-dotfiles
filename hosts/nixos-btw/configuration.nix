@@ -11,6 +11,7 @@
     ./borg.nix
     ./caddy.nix
     ./beszel.nix
+    ./health.nix
   ];
 
   boot.loader.systemd-boot.enable = true;

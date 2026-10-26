@@ -52,5 +52,5 @@ For a fresh install, follow the runbook: it includes setting Alex's sudo passwor
 - [Immich server operations](docs/immich-server-operations.md): deployment, backup, restore, and fresh installation.
 - [Borg backup checklist](docs/borg-backup-job-checklist.md): secrets, repository initialization, and restore checks.
 - [Beszel setup](docs/beszel-setup-notes.md): hub account, agent authorization, and monitoring.
-- [Manual health check](docs/mini-health.md): services, HTTP, storage, failed units, and Borg backup freshness for the mini.
+- [Health check](docs/mini-health.md): hourly service, HTTP, storage, failed-unit, and Borg backup freshness checks; also available as `mini-health`.
 - [Google Photos migration](docs/immich-google-photos-migration.md): importing Takeout with `immich-go`.

@@ -1,4 +1,44 @@
-# Manual mini server health check
+# Mini server health check
+
+## Installed command and schedule
+
+`hosts/nixos-btw/health.nix` packages the checker and its command dependencies
+from the pinned Nixpkgs input. After activating the configuration on the mini:
+
+```sh
+mini-health
+mini-health --json
+systemctl list-timers mini-health.timer
+journalctl -u mini-health.service -n 50 --no-pager
+```
+
+The system service runs as Alex, with journal-reading access, at **ten minutes
+past every hour** in the mini's local timezone. This gives the scheduled Borg
+jobs time to finish. The persistent timer runs once after activation or boot
+if a scheduled run was missed while the timer was inactive. It does not replay
+every missed hour. Each service invocation has an overall ten-minute timeout.
+
+The checker exits nonzero for any `WARN`, `FAIL`, or `UNKNOWN`; systemd records
+that invocation as failed, with the report in the journal. The timer continues
+to schedule subsequent checks. No notifications or automatic repairs are set up.
+
+For an immediate run with the service's exact environment and permissions:
+
+```sh
+sudo systemctl start mini-health.service
+journalctl -u mini-health.service -n 50 --no-pager
+```
+
+Starting a system service uses sudo; the checker itself runs as Alex and does
+not use sudo. `mini-health` can be run directly without elevated privileges.
+
+Deploy the module using the normal procedure from the mini's checkout:
+
+```sh
+sudo nixos-rebuild switch --flake .#nixos-btw
+```
+
+## Run from source
 
 Run `scripts/mini-health.py` **on the Linux mini**. It checks:
 
@@ -110,7 +150,7 @@ unit can reflect a past failure and needs investigation; it does not always
 mean the application is currently unavailable. Filesystem checks are snapshots,
 not disk integrity tests.
 
-Archive contents, kernel/OOM history, SMART, health-check scheduling, and
+Archive contents, kernel/OOM history, SMART, and
 notifications are later steps. A passing report does not establish backup
 recoverability or detect a server that is powered off.
 
