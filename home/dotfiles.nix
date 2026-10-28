@@ -9,7 +9,6 @@ let
 
   commonConfigs = {
     git = "git";
-    wezterm = "wezterm";
   };
 in
 {

@@ -8,7 +8,6 @@ in
 
   home.packages = [
     pkgs.nerd-fonts.fira-code
-    pkgsUnstable.wezterm
     pkgsUnstable.llama-cpp
     pkgs.ghostty-bin
     pkgs.git
