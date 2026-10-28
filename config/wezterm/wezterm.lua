@@ -23,7 +23,6 @@ config.font = wezterm.font_with_fallback({ "JetBrains Mono", "CaskaydiaCove Nerd
 config.font_size = 11
 -- remove tab bar
 config.enable_tab_bar = false
--- set background color (match with starship)
 config.background = {
 	{
 		source = {

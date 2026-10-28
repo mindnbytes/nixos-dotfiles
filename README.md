@@ -27,7 +27,7 @@ home-manager switch --flake .#alex-macbook
 
 These commands use the versions pinned in `flake.lock`. Most packages use stable Nixpkgs; selected applications use unstable. Updating inputs is a separate action: `nix flake update`. Review the lock-file change before rebuilding.
 
-Git, SSH, WezTerm, and Starship configs link to the live checkout. Edits to those files do not require a rebuild, though the application may need reloading. Keep the checkout in place; Home Manager rollback does not undo those edits.
+Git, SSH, and WezTerm configs link to the live checkout. Edits to those files do not require a rebuild, though the application may need reloading. Keep the checkout in place; Home Manager rollback does not undo those edits.
 
 ## Where things live
 

@@ -17,8 +17,5 @@ in
     builtins.mapAttrs (_name: subpath: {
       source = link "${dotfiles}/${subpath}";
       recursive = true;
-    }) commonConfigs
-    // {
-      "starship.toml".source = link "${dotfiles}/starship/starship.toml";
-    };
+    }) commonConfigs;
 }
