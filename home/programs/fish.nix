@@ -54,6 +54,11 @@
         eza -lah --icons $argv
       '';
     };
+
+    functions.nix-search = {
+      description = "Search Nix packages";
+      body = builtins.readFile ./nix-search.fish;
+    };
   };
 
   programs.starship = {
