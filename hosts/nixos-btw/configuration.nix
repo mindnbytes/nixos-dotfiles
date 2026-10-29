@@ -61,10 +61,6 @@
     smartmontools
   ];
 
-  fonts.packages = with pkgs; [
-    nerd-fonts.jetbrains-mono
-  ];
-
   nix.settings.experimental-features = [
     "nix-command"
     "flakes"

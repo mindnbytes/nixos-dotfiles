@@ -11,6 +11,7 @@ in
     pkgsUnstable.llama-cpp
     pkgs.ghostty-bin
     pkgs.git
+    pkgs.wget
     pkgsUnstable.glab
     pkgsUnstable.glow
 
