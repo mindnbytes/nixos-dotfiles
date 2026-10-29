@@ -98,11 +98,12 @@ class HealthTests(unittest.TestCase):
              patch.object(health, "check_immich", return_value=health.Result("PASS", "http/immich", "pong")), \
              patch.object(health, "check_storage", side_effect=health.Unavailable("missing tool")), \
              patch.object(health, "check_failed_units", return_value=health.Result("PASS", "os/failed-units", "none")), \
+             patch.object(health, "check_immich_dump_freshness", side_effect=health.Unavailable("permission denied")), \
              patch.object(health, "check_backup_timer", side_effect=health.Unavailable("missing timer")), \
              patch.object(health, "check_backup_run", side_effect=health.Unavailable("missing service")), \
              patch.object(health, "check_backup_freshness", side_effect=health.Unavailable("permission denied")):
             results = health.collect(15)
-        self.assertEqual(len(results), 19)
+        self.assertEqual(len(results), 20)
         self.assertEqual(results[0].status, "UNKNOWN")
         self.assertEqual(results[12].status, "PASS")
         self.assertEqual(results[-1].status, "UNKNOWN")
@@ -132,6 +133,26 @@ class HealthTests(unittest.TestCase):
 
 class BackupTests(unittest.TestCase):
     now = datetime(2026, 10, 26, 12, tzinfo=timezone.utc)
+
+    def test_dump_freshness_boundaries_and_newest(self):
+        now = self.now.timestamp()
+        for age, expected in ((35, "PASS"), (36, "PASS"), (36 + 1 / 3600, "WARN")):
+            with self.subTest(age=age), patch.object(health, "run", return_value=response(
+                f"{now - 100 * 3600}\n{now - age * 3600}\n")) as run:
+                self.assertEqual(health.check_immich_dump_freshness(36, self.now).status, expected)
+                self.assertIn("*.sql.gz", run.call_args.args[0])
+                self.assertIn("+0c", run.call_args.args[0])
+
+    def test_dump_missing_inaccessible_malformed_and_future(self):
+        with patch.object(health, "run", return_value=response()):
+            self.assertEqual(health.check_immich_dump_freshness(36, self.now).status, "FAIL")
+        for output in ("bad\n", "nan\n", f"{self.now.timestamp() + 301}\n"):
+            with self.subTest(output=output), patch.object(health, "run", return_value=response(output)):
+                with self.assertRaises(health.Unavailable):
+                    health.check_immich_dump_freshness(36, self.now)
+        with patch.object(health, "run", side_effect=health.Unavailable("permission denied")):
+            with self.assertRaises(health.Unavailable):
+                health.check_immich_dump_freshness(36, self.now)
 
     def test_timer_must_be_enabled_active_and_scheduled(self):
         base = dict(LoadState="loaded", ActiveState="active", UnitFileState="enabled",
@@ -272,6 +293,7 @@ class BackupTests(unittest.TestCase):
             with self.subTest(unavailable=unavailable), \
                  patch.object(health, "check_service"), patch.object(health, "check_immich"), \
                  patch.object(health, "check_storage"), patch.object(health, "check_failed_units"), \
+                 patch.object(health, "check_immich_dump_freshness"), \
                  patch.object(health, "check_backup_timer"), \
                  patch.object(health, "backup_properties", return_value=state), \
                  patch.object(health, "read_backup_history", return_value={

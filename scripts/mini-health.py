@@ -246,10 +246,31 @@ def check_backup_freshness(job, max_age_hours, now=None, history=None):
         raise Unavailable("successful backup timestamp is in the future; check the system clock")
     status = "PASS" if age_hours <= max_age_hours else "WARN"
     return Result(status, f"backup/{job}/freshness",
-                  f"successful backup completed {completed.isoformat()}; age {max(0, age_hours):.1f}h; limit {max_age_hours:g}h (journal)")
+                   f"successful backup completed {completed.isoformat()}; age {max(0, age_hours):.1f}h; limit {max_age_hours:g}h (journal)")
 
 
-def collect(min_free_percent, max_backup_age_hours=36):
+def check_immich_dump_freshness(max_age_hours, now=None):
+    directory = "/srv/immich/media/backups"
+    output = run(["find", directory, "-maxdepth", "1", "-type", "f", "-name", "*.sql.gz",
+                  "-size", "+0c", "-printf", "%T@\n"]).stdout
+    try:
+        timestamps = [float(line) for line in output.splitlines()]
+        if any(not math.isfinite(timestamp) or timestamp <= 0 for timestamp in timestamps):
+            raise ValueError("invalid timestamp")
+        if not timestamps:
+            return Result("FAIL", "backup/immich-dump/freshness", "no nonempty database dump found")
+        completed = datetime.fromtimestamp(max(timestamps), timezone.utc)
+    except (ValueError, OverflowError, OSError) as error:
+        raise Unavailable(f"cannot interpret database dump timestamps: {error}") from error
+    age_hours = ((now or datetime.now(timezone.utc)) - completed).total_seconds() / 3600
+    if age_hours < -5 / 60:
+        raise Unavailable("database dump timestamp is in the future; check the system clock")
+    status = "PASS" if age_hours <= max_age_hours else "WARN"
+    return Result(status, "backup/immich-dump/freshness",
+                  f"newest nonempty dump modified {completed.isoformat()}; age {max(0, age_hours):.1f}h; limit {max_age_hours:g}h")
+
+
+def collect(min_free_percent, max_backup_age_hours=36, max_dump_age_hours=36):
     histories = {}
 
     def history(job):
@@ -268,6 +289,7 @@ def collect(min_free_percent, max_backup_age_hours=36):
     checks.extend((f"storage/{path}", lambda path=path, label=label:
                    check_storage(path, label, min_free_percent)) for path, label in FILESYSTEMS)
     checks.append(("os/failed-units", check_failed_units))
+    checks.append(("backup/immich-dump/freshness", lambda: check_immich_dump_freshness(max_dump_age_hours)))
     for job in BACKUP_JOBS:
         checks.extend([
             (f"backup/{job}/timer", lambda job=job: check_backup_timer(job)),
@@ -305,10 +327,12 @@ def main():
                         help="warn below this available-space percentage (default: 15)")
     parser.add_argument("--max-backup-age-hours", type=positive_hours, default=36,
                         help="warn when the latest successful backup is older than this (default: 36)")
+    parser.add_argument("--max-dump-age-hours", type=positive_hours, default=36,
+                        help="warn when the newest Immich database dump is older than this (default: 36)")
     args = parser.parse_args()
     if platform.system() != "Linux":
         parser.exit(2, "mini-health must run on the Linux mini, not the MacBook.\n")
-    results = collect(args.min_free_percent, args.max_backup_age_hours)
+    results = collect(args.min_free_percent, args.max_backup_age_hours, args.max_dump_age_hours)
     healthy = all(result.status == "PASS" for result in results)
     if args.json:
         print(json.dumps({

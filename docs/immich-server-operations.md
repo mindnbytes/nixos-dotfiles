@@ -78,6 +78,10 @@ The dump schedule and retention are controlled in **Administration → Settings 
 
 At `03:00`, `borgbackup-job-mini-immich.service` archives `/srv/immich/media` to `/mnt/backup/borg-mini-immich`. The backup disk is mounted on access.
 
+The scheduled `mini-health` check warns when the newest nonempty database dump
+is older than 36 hours, and fails if none is found. This is an independent
+alert, not a prerequisite for Borg; it does not validate or restore the dump.
+
 Check recent database dumps and Borg runs:
 
 ```bash

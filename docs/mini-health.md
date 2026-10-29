@@ -12,7 +12,8 @@ systemctl list-timers mini-health.timer
 journalctl -u mini-health.service -n 50 --no-pager
 ```
 
-The system service runs as Alex, with journal-reading access, at **ten minutes
+The system service runs as Alex, with journal-reading access and supplementary
+`immich` group access to the media tree, at **ten minutes
 past every hour** in the mini's local timezone. This gives the scheduled Borg
 jobs time to finish. The persistent timer runs once after activation or boot
 if a scheduled run was missed while the timer was inactive. It does not replay
@@ -31,7 +32,9 @@ journalctl -u mini-health.service -n 50 --no-pager
 ```
 
 Starting a system service uses sudo; the checker itself runs as Alex and does
-not use sudo. `mini-health` can be run directly without elevated privileges.
+not use sudo. A direct run needs access to both the journal and Immich's dump
+directory; without it, the affected checks report `UNKNOWN`. Use `sudo
+mini-health` for a direct run if the invoking account lacks access.
 
 Deploy the module using the normal procedure from the mini's checkout:
 
@@ -120,6 +123,8 @@ Run `scripts/mini-health.py` **on the Linux mini**. It checks:
 - For both Borg jobs: an enabled, active timer with a next run; the result of
   the last job invocation; and the age of the latest successful backup recorded
   in the journal with a Borg archive summary.
+- The modification time of the newest nonempty `*.sql.gz` Immich database dump
+  in `/srv/immich/media/backups`, with a default freshness limit of 36 hours.
 
 The script queries state without restarting services or running backups. It
 does not invoke Borg or sudo. Accessing `/mnt/backup` triggers its configured
@@ -138,12 +143,14 @@ python3 scripts/mini-health.py
 python3 scripts/mini-health.py --json
 python3 scripts/mini-health.py --min-free-percent 20
 python3 scripts/mini-health.py --max-backup-age-hours 48
+python3 scripts/mini-health.py --max-dump-age-hours 48
 ```
 
 Dependencies: Python 3.9 or newer, `systemctl`, `journalctl`, `curl`, `findmnt`,
-and GNU `stat`/`readlink`. No third-party Python packages or root privileges are
-required. Alex can read both jobs' journals on the mini. If journal access is
-unavailable, freshness reports `UNKNOWN` and the other checks still run.
+GNU `find`, and GNU `stat`/`readlink`. No third-party Python packages are required.
+The scheduled service has the groups needed to read the journal and dump directory;
+direct runs need equivalent access. Unavailable evidence reports `UNKNOWN` and
+the other checks still run.
 
 If Python or curl is missing, use the repository's pinned packages for a
 temporary environment (this may download packages):
@@ -162,7 +169,7 @@ ssh mini 'cd /home/alex/nixos-dotfiles && nix shell --no-write-lock-file --input
 
 - `PASS`: the check obtained the expected evidence.
 - `WARN`: disk space is low, the latest successful backup is stale, or a backup
-  is still running.
+  is still running, or the newest Immich database dump is stale.
 - `FAIL`: observed state differs from the expected state.
 - `UNKNOWN`: the check could not obtain evidence, for example because a command
   is missing, a disk access timed out, or permissions prevented inspection.
@@ -214,6 +221,13 @@ does not inspect whether the archive is still on disk, its contents, or
 database-dump freshness.
 
 ### Other checks
+
+The dump check reads only file names, sizes, and modification times. A missing
+or empty set of dumps fails; an inaccessible directory or a timestamp more
+than five minutes in the future is `UNKNOWN`. It does not validate dump contents,
+completion, compatibility, or whether the dump is present in a Borg archive.
+The check does not start, stop, or gate the Borg job. Change the dump age limit
+if the Immich dump schedule is longer than the default daily schedule.
 
 The HTTP probe connects to loopback with the `immich.home.arpa` Host header, so
 it tests Caddy routing and the Immich ping endpoint. It does not test client
