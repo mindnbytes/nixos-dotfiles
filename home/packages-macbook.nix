@@ -12,6 +12,7 @@ in
     pkgs.ghostty-bin
     pkgs.git
     pkgsUnstable.glab
+    pkgsUnstable.glow
 
     # Stable LLVM 22 toolchain
     llvm22.clang
