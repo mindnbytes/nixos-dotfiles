@@ -70,20 +70,25 @@ Why:
 
 Do not put Borg passphrases directly into Nix with `passphrase = "..."`.
 
-Create root-only passphrase files manually:
+For initial setup only, create root-only passphrase files manually. These
+commands refuse to overwrite existing files. If a file already exists, stop and
+verify the existing passphrase and repository rather than generating a new one;
+replacing a passphrase does not change the one needed by an existing repository.
 
 ```bash
 nix shell nixpkgs#openssl
 sudo install -d -m 700 /var/lib/borg-secrets
 
-openssl rand -base64 32 | sudo tee /var/lib/borg-secrets/mini-home.passphrase >/dev/null
-openssl rand -base64 32 | sudo tee /var/lib/borg-secrets/mini-immich.passphrase >/dev/null
+openssl rand -base64 32 | sudo sh -c 'umask 077; set -C; cat > /var/lib/borg-secrets/mini-home.passphrase'
+openssl rand -base64 32 | sudo sh -c 'umask 077; set -C; cat > /var/lib/borg-secrets/mini-immich.passphrase'
 
 sudo fish -c "chmod 600 /var/lib/borg-secrets/*.passphrase"
 sudo fish -c "chown root:root /var/lib/borg-secrets/*.passphrase"
 ```
 
 Later, store these passphrases in KeePassXC/Bitwarden as well.
+Verify that each new file is nonempty before initializing a repository. If
+generation fails, do not use the resulting file as a passphrase.
 
 ---
 
@@ -104,6 +109,11 @@ This keeps failure modes separate. A failed database dump should not necessarily
 ---
 
 ## 3. Example Borg NixOS module
+
+This is an illustrative template, **not** the current host configuration. In
+particular, its paths, exclusions, and disabled schedules differ from the live
+jobs. For the authoritative settings, read `hosts/nixos-btw/borg.nix`; do not
+copy this example over that file.
 
 Example file:
 

@@ -6,8 +6,8 @@
 from the pinned Nixpkgs input. After activating the configuration on the mini:
 
 ```sh
-mini-health
-mini-health --json
+sudo mini-health
+sudo mini-health --json
 systemctl list-timers mini-health.timer
 journalctl -u mini-health.service -n 50 --no-pager
 ```
@@ -112,7 +112,8 @@ is required. Future checks automatically affect whether the heartbeat is sent.
 
 ## Run from source
 
-Run `scripts/mini-health.py` **on the Linux mini**. It checks:
+Run `scripts/mini-health.py` **on the Linux mini**, with access to the journal
+and dump directory. It checks:
 
 - Running SSH, PostgreSQL, Redis, Immich server and machine learning, Caddy,
   Beszel hub, and Beszel agent services.
@@ -139,11 +140,11 @@ From the mini's checkout:
 
 ```sh
 cd /home/alex/nixos-dotfiles
-python3 scripts/mini-health.py
-python3 scripts/mini-health.py --json
-python3 scripts/mini-health.py --min-free-percent 20
-python3 scripts/mini-health.py --max-backup-age-hours 48
-python3 scripts/mini-health.py --max-dump-age-hours 48
+sudo python3 scripts/mini-health.py
+sudo python3 scripts/mini-health.py --json
+sudo python3 scripts/mini-health.py --min-free-percent 20
+sudo python3 scripts/mini-health.py --max-backup-age-hours 48
+sudo python3 scripts/mini-health.py --max-dump-age-hours 48
 ```
 
 Dependencies: Python 3.9 or newer, `systemctl`, `journalctl`, `curl`, `findmnt`,
@@ -156,13 +157,13 @@ If Python or curl is missing, use the repository's pinned packages for a
 temporary environment (this may download packages):
 
 ```sh
-nix shell --no-write-lock-file --inputs-from . nixpkgs#python3 nixpkgs#curl --command python3 scripts/mini-health.py
+nix shell --no-write-lock-file --inputs-from . nixpkgs#python3 nixpkgs#curl --command sh -c 'exec sudo env PATH="$PATH" python3 scripts/mini-health.py'
 ```
 
-For a check from the MacBook, after the script is present in the mini's checkout:
+For a check from the MacBook, after deploying the packaged checker on the mini:
 
 ```sh
-ssh mini 'cd /home/alex/nixos-dotfiles && nix shell --no-write-lock-file --inputs-from . nixpkgs#python3 nixpkgs#curl --command python3 scripts/mini-health.py'
+ssh -t mini 'sudo mini-health'
 ```
 
 ## Interpret results
@@ -222,8 +223,9 @@ database-dump freshness.
 
 ### Other checks
 
-The dump check reads only file names, sizes, and modification times. A missing
-or empty set of dumps fails; an inaccessible directory or a timestamp more
+The dump check reads only file names, sizes, and modification times. An
+accessible directory with no nonempty matching dumps fails; a missing or
+inaccessible directory or a timestamp more
 than five minutes in the future is `UNKNOWN`. It does not validate dump contents,
 completion, compatibility, or whether the dump is present in a Borg archive.
 The check does not start, stop, or gate the Borg job. Change the dump age limit

@@ -19,7 +19,7 @@ This runbook covers deployment, backup, restore, and fresh installation for the 
 | Borg schedule | Daily at `03:00`; missed runs execute after the next boot |
 | Borg retention | 7 daily, 4 weekly, and 6 monthly archives |
 
-Immich creates database dumps inside its media directory. Borg backs up the complete media directory, including those dumps. A usable recovery requires both the media files and a compatible database dump from the same Borg archive.
+Immich creates database dumps inside its media directory. Borg archives that directory, including the dumps, subject to the exclusions in `hosts/nixos-btw/borg.nix`. A usable recovery requires both the media files and a compatible database dump from the same Borg archive; verify that the archive contains the required files.
 
 ## Deploy or update
 
@@ -79,8 +79,9 @@ The dump schedule and retention are controlled in **Administration → Settings 
 At `03:00`, `borgbackup-job-mini-immich.service` archives `/srv/immich/media` to `/mnt/backup/borg-mini-immich`. The backup disk is mounted on access.
 
 The scheduled `mini-health` check warns when the newest nonempty database dump
-is older than 36 hours, and fails if none is found. This is an independent
-alert, not a prerequisite for Borg; it does not validate or restore the dump.
+is older than 36 hours, fails if an accessible directory has none, and reports
+`UNKNOWN` if the directory cannot be read. This is an independent alert, not a
+prerequisite for Borg; it does not validate or restore the dump.
 
 Check recent database dumps and Borg runs:
 

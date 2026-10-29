@@ -6,7 +6,10 @@ Most of Beszel is configured declaratively, but the initial hub account, agent a
 
 ## Initial setup
 
-1. Enable only the Beszel hub and its Caddy virtual host first.
+1. For a fresh setup, temporarily disable the Beszel agent in
+   `hosts/nixos-btw/beszel.nix` while leaving the hub and its Caddy virtual
+   host enabled. The checked-in configuration enables both, but the agent
+   needs an environment file generated from the new hub before it can start.
 
 2. Make the local hostname resolve from the client machine.
 
@@ -77,7 +80,7 @@ Most of Beszel is configured declaratively, but the initial hub account, agent a
 
    Do not place the key directly in the Nix configuration. Ordinary Nix values are copied into the world-readable `/nix/store`.
 
-8. Enable the Beszel agent declaration and rebuild:
+8. Re-enable the Beszel agent declaration and rebuild:
 
    ```fish
    sudo nixos-rebuild switch --flake .#nixos-btw
@@ -105,13 +108,16 @@ Most of Beszel is configured declaratively, but the initial hub account, agent a
 
 ## Backup and recovery
 
-Include the hub state in the Borg backup:
+The configured Borg jobs do **not** back up the hub state:
 
 ```text
 /var/lib/beszel-hub
 ```
 
-Also back up the agent environment file through an appropriate secrets-backup process:
+If the hub state needs to be recoverable, arrange a separate backup and test
+its restoration. Also back up the agent environment file through an
+appropriate secrets-backup process; it is not included in the configured Borg
+jobs either:
 
 ```text
 /var/lib/secrets/beszel-agent.env
