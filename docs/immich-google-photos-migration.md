@@ -85,7 +85,7 @@ Run the import first with `--dry-run`:
 ```bash
 immich-go upload from-google-photos \
   --dry-run \
-  --server=http://nixos-btw:2283 \
+  --server=http://immich.home.arpa \
   --api-key="$USER_API" \
   --concurrent-tasks=8 \
   --client-timeout=60m \
@@ -104,8 +104,8 @@ When an export consists of multiple ZIP parts, verify the current `immich-go` do
 - `--dry-run`  
   Examines the archive and planned operations without uploading assets.
 
-- `--server=http://nixos-btw:2283`  
-  Address of the Immich server as reachable from the machine running `immich-go`.
+- `--server=http://immich.home.arpa`
+  Caddy address of the Immich server as reachable from the machine running `immich-go`.
 
 - `--api-key="$USER_API"`  
   Uses the API key belonging to the target Immich user.
@@ -151,7 +151,7 @@ Remove `--dry-run` and run the same command:
 
 ```bash
 immich-go upload from-google-photos \
-  --server=http://nixos-btw:2283 \
+  --server=http://immich.home.arpa \
   --api-key="$USER_API" \
   --concurrent-tasks=8 \
   --client-timeout=60m \

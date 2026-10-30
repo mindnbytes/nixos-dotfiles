@@ -8,7 +8,7 @@ This runbook covers deployment, backup, restore, and fresh installation for the 
 | --- | --- |
 | NixOS flake target | `.#nixos-btw` |
 | Immich URL | `http://immich.home.arpa` |
-| Direct Immich address | `http://nixos-btw:2283` |
+| Immich backend (local only) | `http://127.0.0.1:2283` |
 | Service filesystem | ext4 filesystem labeled `services`, mounted at `/srv` |
 | Immich media | `/srv/immich/media` |
 | Immich database dumps | `/srv/immich/media/backups` |
@@ -129,6 +129,9 @@ Recovery requires the Borg repository and its passphrase. Keep a separate copy o
 ## Restore
 
 This procedure replaces the current media tree and database with one archived state.
+It is not a tested rollback procedure for a major Immich upgrade. Do not start an
+older Immich server against a database migrated by a newer version; restore a
+compatible pre-upgrade database before starting the older server.
 
 1. Mount the backup disk and select an archive:
 

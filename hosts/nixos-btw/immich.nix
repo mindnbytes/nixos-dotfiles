@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgsUnstable, ... }:
 
 {
   # Make sure the directories exist with correct ownership.
@@ -14,11 +14,12 @@
 
   services.immich = {
     enable = true;
+    package = pkgsUnstable.immich;
 
-    # Local network access
-    host = "0.0.0.0";
+    # Expose Immich through Caddy only.
+    host = "127.0.0.1";
     port = 2283;
-    openFirewall = true;
+    openFirewall = false;
 
     # On the USB NVMe SSD
     mediaLocation = "/srv/immich/media";

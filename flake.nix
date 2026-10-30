@@ -33,6 +33,7 @@
         in
         nixpkgs.lib.nixosSystem {
           system = system;
+          specialArgs.pkgsUnstable = mkPkgs inputs.nixpkgs-unstable system;
 
           modules = [
             ./hosts/nixos-btw/configuration.nix
