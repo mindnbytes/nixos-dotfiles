@@ -165,6 +165,23 @@ class BackupTests(unittest.TestCase):
             self.assertEqual(health.check_immich_dump_freshness(240, self.now).status, "PASS")
             self.assertIn("264 hours ago", run.call_args.args[0])
 
+    def test_dump_colored_journal_messages(self):
+        message = "\x1b[32m[Nest] 123\x1b[39m \x1b[33m[Microservices:DatabaseBackupService]\x1b[39m \x1b[32mDatabase Backup Success\x1b[39m"
+        for encoded in (message, list(message.encode("utf-8"))):
+            with self.subTest(encoded=type(encoded)), patch.object(
+                health, "run", return_value=response(self.dump_entry(self.now.timestamp(), encoded)),
+            ):
+                self.assertEqual(health.check_immich_dump_freshness(36, self.now).status, "PASS")
+
+    def test_dump_invalid_binary_and_unrelated_messages_are_ignored(self):
+        for message in ([256], [-1], [True], ["27"], [255], None,
+                        list(b"[Microservices:DatabaseBackupService] Database Backup Success but failed")):
+            with self.subTest(message=message), patch.object(
+                health, "run", return_value=response(self.dump_entry(self.now.timestamp(), message)),
+            ):
+                with self.assertRaises(health.Unavailable):
+                    health.check_immich_dump_freshness(36, self.now)
+
     def test_timer_must_be_enabled_active_and_scheduled(self):
         base = dict(LoadState="loaded", ActiveState="active", UnitFileState="enabled",
                     NextElapseUSecRealtime="Mon 2026-10-26 15:00:00 CET")

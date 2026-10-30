@@ -250,6 +250,20 @@ def check_backup_freshness(job, max_age_hours, now=None, history=None):
                    f"successful backup completed {completed.isoformat()}; age {max(0, age_hours):.1f}h; limit {max_age_hours:g}h (journal)")
 
 
+def journal_message(value):
+    """Decode journald's binary JSON representation and remove terminal colors."""
+    if isinstance(value, list):
+        if not all(type(byte) is int and 0 <= byte <= 255 for byte in value):
+            return None
+        try:
+            value = bytes(value).decode("utf-8")
+        except UnicodeDecodeError:
+            return None
+    if not isinstance(value, str):
+        return None
+    return re.sub(r"\x1b\[[0-9;]*m", "", value)
+
+
 def check_immich_dump_freshness(max_age_hours, now=None):
     lookback_hours = max(168, max_age_hours + 24)
     output = run(["journalctl", "--unit", "immich-server.service", "--since",
@@ -258,7 +272,7 @@ def check_immich_dump_freshness(max_age_hours, now=None):
         timestamps = []
         for line in output.splitlines():
             entry = json.loads(line)
-            message = entry.get("MESSAGE", "")
+            message = journal_message(entry.get("MESSAGE"))
             if (entry.get("_SYSTEMD_UNIT") == "immich-server.service" and isinstance(message, str)
                     and re.search(r"\[(?:Microservices|Api):DatabaseBackupService(?:~[^\]]+)?\] Database Backup Success$", message)):
                 timestamp = int(entry["__REALTIME_TIMESTAMP"]) / 1_000_000
