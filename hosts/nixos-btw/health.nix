@@ -9,7 +9,6 @@ let
       util-linux
       coreutils
       curl
-      findutils
     ];
     text = ''
       exec python3 ${../../scripts/mini-health.py} "$@"
@@ -36,7 +35,7 @@ in
     serviceConfig = {
       Type = "oneshot";
       User = "alex";
-      SupplementaryGroups = [ "systemd-journal" "immich" ];
+      SupplementaryGroups = [ "systemd-journal" ];
       ExecStart = "${reporter}/bin/mini-health-report";
       LoadCredential = [ "healthchecks-url:/var/lib/mini-health/healthchecks-url" ];
       # A non-secret default keeps local checks working before setup.

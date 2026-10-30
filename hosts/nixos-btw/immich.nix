@@ -26,8 +26,8 @@
     # Keep enabled initially; it is local.
     machine-learning.enable = true;
 
-    # Optional: less noisy logs
-    environment.IMMICH_LOG_LEVEL = "warn";
+    # Include the database backup success message used by mini-health.
+    environment.IMMICH_LOG_LEVEL = "log";
   };
 
   # Optional, reduces Redis log noise.

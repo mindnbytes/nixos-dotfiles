@@ -8,6 +8,7 @@ import json
 import math
 import os
 import platform
+import re
 import subprocess
 import sys
 
@@ -250,24 +251,31 @@ def check_backup_freshness(job, max_age_hours, now=None, history=None):
 
 
 def check_immich_dump_freshness(max_age_hours, now=None):
-    directory = "/srv/immich/media/backups"
-    output = run(["find", directory, "-maxdepth", "1", "-type", "f", "-name", "*.sql.gz",
-                  "-size", "+0c", "-printf", "%T@\n"]).stdout
+    lookback_hours = max(168, max_age_hours + 24)
+    output = run(["journalctl", "--unit", "immich-server.service", "--since",
+                  f"{lookback_hours:.0f} hours ago", "--output=json", "--no-pager", "--quiet"]).stdout
     try:
-        timestamps = [float(line) for line in output.splitlines()]
-        if any(not math.isfinite(timestamp) or timestamp <= 0 for timestamp in timestamps):
-            raise ValueError("invalid timestamp")
+        timestamps = []
+        for line in output.splitlines():
+            entry = json.loads(line)
+            message = entry.get("MESSAGE", "")
+            if (entry.get("_SYSTEMD_UNIT") == "immich-server.service" and isinstance(message, str)
+                    and re.search(r"\[(?:Microservices|Api):DatabaseBackupService(?:~[^\]]+)?\] Database Backup Success$", message)):
+                timestamp = int(entry["__REALTIME_TIMESTAMP"]) / 1_000_000
+                if not math.isfinite(timestamp) or timestamp <= 0:
+                    raise ValueError("invalid timestamp")
+                timestamps.append(timestamp)
         if not timestamps:
-            return Result("FAIL", "backup/immich-dump/freshness", "no nonempty database dump found")
+            raise Unavailable(f"no Immich database backup success in the last {lookback_hours:g}h of readable journal")
         completed = datetime.fromtimestamp(max(timestamps), timezone.utc)
-    except (ValueError, OverflowError, OSError) as error:
-        raise Unavailable(f"cannot interpret database dump timestamps: {error}") from error
+    except (ValueError, KeyError, TypeError, AttributeError, OverflowError, OSError) as error:
+        raise Unavailable(f"cannot interpret Immich backup journal: {error}") from error
     age_hours = ((now or datetime.now(timezone.utc)) - completed).total_seconds() / 3600
     if age_hours < -5 / 60:
-        raise Unavailable("database dump timestamp is in the future; check the system clock")
+        raise Unavailable("database backup success timestamp is in the future; check the system clock")
     status = "PASS" if age_hours <= max_age_hours else "WARN"
     return Result(status, "backup/immich-dump/freshness",
-                  f"newest nonempty dump modified {completed.isoformat()}; age {max(0, age_hours):.1f}h; limit {max_age_hours:g}h")
+                  f"Immich reported backup success {completed.isoformat()}; age {max(0, age_hours):.1f}h; limit {max_age_hours:g}h (journal)")
 
 
 def collect(min_free_percent, max_backup_age_hours=36, max_dump_age_hours=36):
@@ -328,7 +336,7 @@ def main():
     parser.add_argument("--max-backup-age-hours", type=positive_hours, default=36,
                         help="warn when the latest successful backup is older than this (default: 36)")
     parser.add_argument("--max-dump-age-hours", type=positive_hours, default=36,
-                        help="warn when the newest Immich database dump is older than this (default: 36)")
+                        help="warn when the latest Immich database backup success is older than this (default: 36)")
     args = parser.parse_args()
     if platform.system() != "Linux":
         parser.exit(2, "mini-health must run on the Linux mini, not the MacBook.\n")

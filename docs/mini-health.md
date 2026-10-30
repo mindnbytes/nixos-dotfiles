@@ -12,8 +12,7 @@ systemctl list-timers mini-health.timer
 journalctl -u mini-health.service -n 50 --no-pager
 ```
 
-The system service runs as Alex, with journal-reading access and supplementary
-`immich` group access to the media tree, at **ten minutes
+The system service runs as Alex, with journal-reading access, at **ten minutes
 past every hour** in the mini's local timezone. This gives the scheduled Borg
 jobs time to finish. The persistent timer runs once after activation or boot
 if a scheduled run was missed while the timer was inactive. It does not replay
@@ -32,9 +31,9 @@ journalctl -u mini-health.service -n 50 --no-pager
 ```
 
 Starting a system service uses sudo; the checker itself runs as Alex and does
-not use sudo. A direct run needs access to both the journal and Immich's dump
-directory; without it, the affected checks report `UNKNOWN`. Use `sudo
-mini-health` for a direct run if the invoking account lacks access.
+not use sudo. A direct run needs access to the journal; without it, the
+affected checks report `UNKNOWN`. Use `sudo mini-health` for a direct run if
+the invoking account lacks access.
 
 Deploy the module using the normal procedure from the mini's checkout:
 
@@ -112,8 +111,8 @@ is required. Future checks automatically affect whether the heartbeat is sent.
 
 ## Run from source
 
-Run `scripts/mini-health.py` **on the Linux mini**, with access to the journal
-and dump directory. It checks:
+Run `scripts/mini-health.py` **on the Linux mini**, with access to the journal.
+It checks:
 
 - Running SSH, PostgreSQL, Redis, Immich server and machine learning, Caddy,
   Beszel hub, and Beszel agent services.
@@ -124,8 +123,8 @@ and dump directory. It checks:
 - For both Borg jobs: an enabled, active timer with a next run; the result of
   the last job invocation; and the age of the latest successful backup recorded
   in the journal with a Borg archive summary.
-- The modification time of the newest nonempty `*.sql.gz` Immich database dump
-  in `/srv/immich/media/backups`, with a default freshness limit of 36 hours.
+- The age of the latest Immich database backup success message in the journal,
+  with a default freshness limit of 36 hours.
 
 The script queries state without restarting services or running backups. It
 does not invoke Borg or sudo. Accessing `/mnt/backup` triggers its configured
@@ -148,9 +147,9 @@ sudo python3 scripts/mini-health.py --max-dump-age-hours 48
 ```
 
 Dependencies: Python 3.9 or newer, `systemctl`, `journalctl`, `curl`, `findmnt`,
-GNU `find`, and GNU `stat`/`readlink`. No third-party Python packages are required.
-The scheduled service has the groups needed to read the journal and dump directory;
-direct runs need equivalent access. Unavailable evidence reports `UNKNOWN` and
+and GNU `stat`/`readlink`. No third-party Python packages are required.
+The scheduled service has journal-reading access; direct runs need equivalent
+access. Unavailable evidence reports `UNKNOWN` and
 the other checks still run.
 
 If Python or curl is missing, use the repository's pinned packages for a
@@ -170,7 +169,7 @@ ssh -t mini 'sudo mini-health'
 
 - `PASS`: the check obtained the expected evidence.
 - `WARN`: disk space is low, the latest successful backup is stale, or a backup
-  is still running, or the newest Immich database dump is stale.
+  is still running, or the latest Immich database backup success is stale.
 - `FAIL`: observed state differs from the expected state.
 - `UNKNOWN`: the check could not obtain evidence, for example because a command
   is missing, a disk access timed out, or permissions prevented inspection.
@@ -223,13 +222,19 @@ database-dump freshness.
 
 ### Other checks
 
-The dump check reads only file names, sizes, and modification times. An
-accessible directory with no nonempty matching dumps fails; a missing or
-inaccessible directory or a timestamp more
-than five minutes in the future is `UNKNOWN`. It does not validate dump contents,
-completion, compatibility, or whether the dump is present in a Borg archive.
-The check does not start, stop, or gate the Borg job. Change the dump age limit
-if the Immich dump schedule is longer than the default daily schedule.
+The dump check reads Immich's `Database Backup Success` messages from the
+`immich-server.service` journal. Immich's `log` level must remain enabled for
+these messages. It searches the last seven days, or the configured freshness
+limit plus 24 hours if longer. Missing or unreadable evidence, malformed
+journal records, and timestamps more than five minutes in the future are
+`UNKNOWN`; a success older than the limit is `WARN`. After enabling this check,
+it remains `UNKNOWN` until Immich logs a successful dump. Recheck the message
+format after an Immich upgrade.
+
+The check trusts Immich's success report; it does not inspect the dump, verify
+its compatibility, or check that it is present in a Borg archive. It does not
+start, stop, or gate the Borg job. Change the dump age limit if the Immich dump
+schedule is longer than the default daily schedule.
 
 The HTTP probe connects to loopback with the `immich.home.arpa` Host header, so
 it tests Caddy routing and the Immich ping endpoint. It does not test client

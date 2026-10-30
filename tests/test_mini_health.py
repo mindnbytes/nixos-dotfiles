@@ -134,25 +134,36 @@ class HealthTests(unittest.TestCase):
 class BackupTests(unittest.TestCase):
     now = datetime(2026, 10, 26, 12, tzinfo=timezone.utc)
 
+    def dump_entry(self, timestamp, message="[Nest] 123 - 10/26/2026 LOG [Microservices:DatabaseBackupService] Database Backup Success", unit="immich-server.service"):
+        return json.dumps({"_SYSTEMD_UNIT": unit, "MESSAGE": message,
+                           "__REALTIME_TIMESTAMP": str(int(timestamp * 1_000_000))})
+
     def test_dump_freshness_boundaries_and_newest(self):
         now = self.now.timestamp()
         for age, expected in ((35, "PASS"), (36, "PASS"), (36 + 1 / 3600, "WARN")):
             with self.subTest(age=age), patch.object(health, "run", return_value=response(
-                f"{now - 100 * 3600}\n{now - age * 3600}\n")) as run:
+                self.dump_entry(now - 100 * 3600) + "\n" + self.dump_entry(now - age * 3600))) as run:
                 self.assertEqual(health.check_immich_dump_freshness(36, self.now).status, expected)
-                self.assertIn("*.sql.gz", run.call_args.args[0])
-                self.assertIn("+0c", run.call_args.args[0])
+                self.assertIn("immich-server.service", run.call_args.args[0])
+                self.assertIn("--output=json", run.call_args.args[0])
 
     def test_dump_missing_inaccessible_malformed_and_future(self):
-        with patch.object(health, "run", return_value=response()):
-            self.assertEqual(health.check_immich_dump_freshness(36, self.now).status, "FAIL")
-        for output in ("bad\n", "nan\n", f"{self.now.timestamp() + 301}\n"):
+        for output in ("", "bad\n", "[]", self.dump_entry(self.now.timestamp() + 301),
+                       self.dump_entry(self.now.timestamp(), "Database Backup Success"),
+                       self.dump_entry(self.now.timestamp(), unit="other.service"),
+                       self.dump_entry(self.now.timestamp(), "[Microservices:DatabaseBackupService] Database Backup Success but failed")):
             with self.subTest(output=output), patch.object(health, "run", return_value=response(output)):
                 with self.assertRaises(health.Unavailable):
                     health.check_immich_dump_freshness(36, self.now)
         with patch.object(health, "run", side_effect=health.Unavailable("permission denied")):
             with self.assertRaises(health.Unavailable):
                 health.check_immich_dump_freshness(36, self.now)
+
+    def test_dump_custom_lookback_and_api_context(self):
+        entry = self.dump_entry(self.now.timestamp(), "[Api:DatabaseBackupService~job-id] Database Backup Success")
+        with patch.object(health, "run", return_value=response(entry)) as run:
+            self.assertEqual(health.check_immich_dump_freshness(240, self.now).status, "PASS")
+            self.assertIn("264 hours ago", run.call_args.args[0])
 
     def test_timer_must_be_enabled_active_and_scheduled(self):
         base = dict(LoadState="loaded", ActiveState="active", UnitFileState="enabled",
