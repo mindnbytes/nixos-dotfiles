@@ -13,6 +13,7 @@
     "/nix/var/nix/profiles/default/bin"
     "/opt/homebrew/bin"
     "/opt/homebrew/sbin"
+    "$HOME/.local/bin"
   ];
 
   programs.man = {
