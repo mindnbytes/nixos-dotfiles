@@ -74,7 +74,7 @@ Immich stores automatic database dumps in:
 /srv/immich/media/backups
 ```
 
-The dump schedule and retention are controlled in **Administration → Settings → Backup**. Immich defaults to a daily dump at `02:00` and retention of 14 dumps.
+The dump schedule and retention are controlled in **Administration → Settings → Database Dump Settings**. Immich defaults to a daily dump at `02:00` and retention of 14 dumps.
 
 At `03:00`, `borgbackup-job-mini-immich.service` archives `/srv/immich/media` to `/mnt/backup/borg-mini-immich`. The backup disk is mounted on access.
 

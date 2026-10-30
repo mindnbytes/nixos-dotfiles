@@ -225,7 +225,8 @@ database-dump freshness.
 The dump check reads Immich's `Database Backup Success` messages from the
 `immich-server.service` journal. Immich's `log` level must remain enabled for
 these messages. It searches the last seven days, or the configured freshness
-limit plus 24 hours if longer. Missing or unreadable evidence, malformed
+limit plus 24 hours if longer. It handles both plain journal messages and
+journald byte arrays containing ANSI color codes. Missing or unreadable evidence, malformed
 journal records, and timestamps more than five minutes in the future are
 `UNKNOWN`; a success older than the limit is `WARN`. After enabling this check,
 it remains `UNKNOWN` until Immich logs a successful dump. Recheck the message
@@ -264,6 +265,7 @@ missing commands, timeouts, and continuing after an unavailable check.
 Backup tests cover disabled timers, unsuccessful and running jobs, fresh/stale
 success events, the exact age threshold, invocation matching, later failed runs,
 missing summaries, malformed/future timestamps, and unavailable journal access.
+They cover plain and colored Immich dump messages and malformed journal byte arrays.
 They also cover journal fallback when runtime records are missing, failures
 before an archive summary, and one shared journal read per job.
 Reporter tests cover success-only gating, disabled/empty/missing/invalid credentials,
