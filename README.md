@@ -4,7 +4,7 @@ Personal configuration for two machines:
 
 | Target | Machine | Manages |
 | --- | --- | --- |
-| `nixos-btw` | 2012 Intel Mac mini running NixOS | OS, Immich, Caddy, Beszel, Borg backups, and Alex's Home Manager profile |
+| `nixos-btw` | 2012 Intel Mac mini running NixOS | OS, Immich, Caddy, DNS, Beszel, Borg backups, and Alex's Home Manager profile |
 | `alex-macbook` | Apple Silicon MacBook | Standalone Home Manager packages and dotfiles |
 
 ## Everyday use
@@ -32,7 +32,7 @@ Git and SSH configs link to the live checkout. Edits to those files do not requi
 ## Where things live
 
 - `flake.nix`: inputs and the two configuration targets.
-- `hosts/nixos-btw/`: server hardware, storage, users, Immich, Borg, Caddy, and Beszel.
+- `hosts/nixos-btw/`: server hardware, storage, users, Immich, Borg, Caddy, DNS, and Beszel.
 - `home/`: shared packages, shell/editor settings, and machine profiles.
 - `config/`: application dotfiles linked into the home directory.
 - `docs/`: installation and recovery procedures.
@@ -42,7 +42,7 @@ Git and SSH configs link to the live checkout. Edits to those files do not requi
 - ext4 disk labeled `services`, mounted at `/srv`; ext4 disk labeled `backup-hdd`, automounted at `/mnt/backup`.
 - Root-only files created outside Git: `/var/lib/borg-secrets/mini-home.passphrase`, `/var/lib/borg-secrets/mini-immich.passphrase`, and `/var/lib/secrets/beszel-agent.env`.
 - Borg repositories initialized once using the checklist below; recovery uses the existing repositories.
-- Client DNS or hosts entries resolving `immich.home.arpa` and `monitor.home.arpa` to the mini.
+- Speedport DHCP reservation and NetworkManager IPv6 address for the mini's DNS service; see the DNS runbook.
 
 For a fresh install, follow the runbook: it includes setting Alex's sudo password and copying the installation checkout into the home directory. SSH access is key-only.
 
@@ -50,6 +50,7 @@ For a fresh install, follow the runbook: it includes setting Alex's sudo passwor
 
 - [Nix editor completion](docs/nix-editor-completion.md): dotfiles defaults and project-specific overrides for Helix.
 - [Immich server operations](docs/immich-server-operations.md): deployment, backup, restore, and fresh installation.
+- [Home DNS](docs/home-dns.md): dnsmasq, Speedport settings, testing, and recovery.
 - [Borg backup checklist](docs/borg-backup-job-checklist.md): secrets, repository initialization, and restore checks.
 - [Beszel setup](docs/beszel-setup-notes.md): hub account, agent authorization, and monitoring.
 - [Health check](docs/mini-health.md): hourly checks, optional success-only Healthchecks/email reporting, and manual `mini-health` use.

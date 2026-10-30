@@ -10,6 +10,7 @@
     ./immich.nix
     ./borg.nix
     ./caddy.nix
+    ./dns.nix
     ./beszel.nix
     ./health.nix
   ];
