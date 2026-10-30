@@ -9,7 +9,7 @@ let
     monthly = 6;
   };
 
-  commonExclude = [
+  homeExclude = [
     "**/.cache"
     "**/node_modules"
     "**/target"
@@ -25,7 +25,7 @@ in
         "/home/alex/Projects"
         "/home/alex/nixos-dotfiles"
       ];
-      exclude = commonExclude;
+      exclude = homeExclude;
       repo = "/mnt/backup/borg-mini-home";
       removableDevice = true;
       doInit = false;
@@ -57,9 +57,8 @@ in
         "/srv/immich/media"
       ];
 
-      exclude = commonExclude ++ [
-        "/srv/**/tmp"
-      ];
+      # Back up the full Immich tree, including database dumps and media.
+      exclude = [ ];
 
       repo = "/mnt/backup/borg-mini-immich";
       removableDevice = true;

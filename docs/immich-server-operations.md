@@ -19,7 +19,7 @@ This runbook covers deployment, backup, restore, and fresh installation for the 
 | Borg schedule | Daily at `03:00`; missed runs execute after the next boot |
 | Borg retention | 7 daily, 4 weekly, and 6 monthly archives |
 
-Immich creates database dumps inside its media directory. Borg archives that directory, including the dumps, subject to the exclusions in `hosts/nixos-btw/borg.nix`. A usable recovery requires both the media files and a compatible database dump from the same Borg archive; verify that the archive contains the required files.
+Immich creates database dumps inside its media directory. The Immich Borg job archives the entire media directory, including the dumps, without name-based exclusions. A usable recovery requires both the media files and a compatible database dump from the same Borg archive; verify that the archive contains the required files.
 
 ## Deploy or update
 
