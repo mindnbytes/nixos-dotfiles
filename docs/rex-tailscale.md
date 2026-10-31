@@ -11,17 +11,24 @@ policy allows the configured Tailscale identity to connect as `alex`.
    MFA with the identity provider. In the Tailscale admin console enable
    MagicDNS and HTTPS certificates. HTTPS certificate names appear in public
    certificate transparency logs; Serve itself remains private to the tailnet.
-2. On the mini, update this checkout and apply the configuration:
+2. On the mini, update this checkout and start applying the configuration:
 
    ```sh
    cd ~/nixos-dotfiles
    sudo nixos-rebuild switch --flake .#nixos-btw
+   ```
+
+   On first installation the switch can wait for Tailscale enrollment. Leave it
+   running and, in a second terminal or SSH connection, enroll the mini:
+
+   ```sh
    sudo tailscale up
    tailscale status
    ```
 
    Follow the sign-in link and approve the mini in the admin console if needed.
-   Until enrollment and HTTPS are ready, the Rex Serve unit may retry.
+   Once connected, the switch should finish. The first HTTPS connection can
+   take longer while Tailscale provisions its certificate.
 3. Confirm the Tailscale login in the admin console matches the principal in
    `hosts/nixos-btw/rex.nix`. This identity is not a password, but grants
    access to `alex`'s account. Review your tailnet access policy as well.
