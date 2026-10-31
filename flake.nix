@@ -4,6 +4,7 @@
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-26.05";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    rex.url = "https://pkgs.superlogical.com/rex/nix/preview.tar.gz";
 
     home-manager = {
       url = "github:nix-community/home-manager/release-26.05";
@@ -37,6 +38,7 @@
 
           modules = [
             ./hosts/nixos-btw/configuration.nix
+            inputs.rex.nixosModules.default
 
             home-manager.nixosModules.home-manager
             {

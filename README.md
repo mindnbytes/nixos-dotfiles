@@ -51,6 +51,7 @@ For a fresh install, follow the runbook: it includes setting Alex's sudo passwor
 - [Nix editor completion](docs/nix-editor-completion.md): dotfiles defaults and project-specific overrides for Helix.
 - [Immich server operations](docs/immich-server-operations.md): deployment, backup, restore, and fresh installation.
 - [Home DNS](docs/home-dns.md): dnsmasq, Speedport settings, testing, and recovery.
+- [Rex and Tailscale](docs/rex-tailscale.md): private remote Rex access and enrollment.
 - [Borg backup checklist](docs/borg-backup-job-checklist.md): secrets, repository initialization, and restore checks.
 - [Beszel setup](docs/beszel-setup-notes.md): hub account, agent authorization, and monitoring.
 - [Health check](docs/mini-health.md): hourly checks, optional success-only Healthchecks/email reporting, and manual `mini-health` use.

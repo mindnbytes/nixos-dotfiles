@@ -13,6 +13,7 @@
     ./dns.nix
     ./beszel.nix
     ./health.nix
+    ./rex.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
