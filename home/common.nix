@@ -3,6 +3,7 @@
 {
   imports = [
     ./programs/helix.nix
+    ./programs/btop.nix
     ./programs/fish.nix
   ];
   # This value determines the Home Manager release that your

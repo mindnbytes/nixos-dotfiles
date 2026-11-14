@@ -9,6 +9,5 @@
     jq
     eza
     bat
-    btop
   ];
 }

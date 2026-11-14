@@ -43,7 +43,7 @@ in
 
     # Generates ~/.config/helix/config.toml
     settings = {
-      theme = "tokyonight_storm";
+      theme = "flexoki_light";
 
       editor.file-picker.hidden = false;
       editor.soft-wrap.enable = true;
